@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1612">
+<title>Reisekosten</title>
+<link rel="manifest" href="#" id="manifestLink">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f0e0c;--sf:#1a1814;--s2:#242018;--bd:#333028;--acc:#e8a040;--ok:#4caf7d;--warn:#e85040;--txt:#f0ead8;--mut:#7a7060}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-tap-highlight-color:transparent}
+.app{max-width:600px;margin:0 auto;padding-bottom:80px;min-height:100vh}
+
+/* Header */
+.hdr{background:var(--sf);border-bottom:2px solid var(--acc);padding:14px 16px 10px;position:sticky;top:0;z-index:100}
+.hdr h1{font-size:1.2rem;font-weight:700;color:var(--acc);letter-spacing:-.01em}
+.hdr-sub{font-size:.62rem;color:var(--mut);margin-top:2px;letter-spacing:.06em;text-transform:uppercase}
+.hdr-stat{font-size:.65rem;color:var(--txt);margin-top:5px;font-weight:600}
+.drive-btn{margin-top:8px;padding:7px 14px;border-radius:5px;font-size:.68rem;font-weight:700;cursor:pointer;border:1.5px solid #4285f4;background:transparent;color:#4285f4}
+.drive-btn.connected{background:#4285f4;color:#fff;border-color:#4285f4}
+
+/* Install banner */
+.install-banner{margin:12px;background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.install-banner p{font-size:.72rem;color:var(--ok);flex:1;line-height:1.5}
+.install-banner button{background:var(--ok);color:#000;border:none;border-radius:5px;padding:7px 12px;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap}
+
+/* Upload */
+.upload-sec{margin:12px}
+.drop{border:2px dashed var(--bd);border-radius:10px;padding:24px 14px;text-align:center;background:var(--sf);transition:border-color .2s}
+.drop.drag{border-color:var(--acc)}
+.drop-icon{font-size:2rem;margin-bottom:8px}
+.drop h3{font-size:.95rem;color:var(--txt);margin-bottom:6px}
+.drop p{font-size:.68rem;color:var(--mut)}
+.drop-btn{display:inline-block;margin-top:12px;padding:9px 20px;background:var(--acc);color:#000;border-radius:5px;font-size:.75rem;font-weight:700;cursor:pointer}
+.cam-btn{display:inline-block;margin-top:8px;margin-left:8px;padding:9px 20px;background:transparent;color:var(--acc);border:1.5px solid var(--acc);border-radius:5px;font-size:.75rem;font-weight:700;cursor:pointer}
+
+/* Thumbs */
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.thumb{position:relative;width:70px;height:70px;border-radius:6px;overflow:hidden;border:2px solid var(--bd)}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.tdel{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.8);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.6rem;cursor:pointer}
+.ts{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:.5rem;padding:2px;font-weight:700;text-transform:uppercase}
+.ts-w{background:rgba(0,0,0,.6);color:var(--mut)}
+.ts-s{background:rgba(232,160,64,.9);color:#000}
+.ts-ok{background:rgba(76,175,125,.9);color:#000}
+.ts-f{background:rgba(232,80,64,.9);color:#fff}
+
+/* Scan button */
+.scan-bar{padding:10px 0 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{padding:11px 20px;border-radius:5px;font-size:.75rem;font-weight:700;cursor:pointer;border:none;transition:all .15s}
+.btn-p{background:var(--acc);color:#000}
+.btn-p:disabled{opacity:.4;cursor:not-allowed}
+.btn-o{background:transparent;color:var(--txt);border:1.5px solid var(--bd)}
+.btn-d{background:transparent;color:var(--warn);border:1.5px solid var(--warn)}
+.btn-sm{padding:7px 12px;font-size:.68rem}
+
+/* Log */
+.log-wrap{margin:12px;border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+.log-hdr{background:var(--s2);padding:8px 12px;font-size:.6rem;color:var(--mut);letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between}
+.log-body{max-height:180px;overflow-y:auto;padding:8px;background:var(--sf)}
+.le{display:flex;gap:7px;align-items:flex-start;padding:3px 0;font-size:.68rem;border-bottom:1px solid rgba(255,255,255,.04)}
+.le:last-child{border:none}
+.li{font-size:.78rem;flex-shrink:0}
+.lt{font-size:.58rem;padding:1px 6px;border-radius:3px;font-weight:700;white-space:nowrap;flex-shrink:0}
+.lt-ok{background:rgba(76,175,125,.2);color:var(--ok)}
+.lt-acc{background:rgba(232,160,64,.2);color:var(--acc)}
+.lt-warn{background:rgba(232,80,64,.2);color:var(--warn)}
+.lt-info{background:rgba(255,255,255,.08);color:var(--mut)}
+.lx{color:var(--mut);line-height:1.4;flex:1}
+.lx b{color:var(--txt)}
+
+/* Summary */
+.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px}
+.sum-card{background:var(--sf);border:1px solid var(--bd);border-radius:7px;padding:12px}
+.sum-lbl{font-size:.58rem;color:var(--mut);letter-spacing:.07em;text-transform:uppercase}
+.sum-val{font-size:1.4rem;font-weight:700;margin-top:2px}
+.sum-val.a{color:var(--acc)}.sum-val.g{color:var(--ok)}
+
+/* Year tabs */
+.ytabs{display:flex;gap:6px;padding:0 12px 10px;flex-wrap:wrap}
+.ytab{padding:4px 12px;border-radius:4px;font-size:.65rem;font-weight:600;cursor:pointer;border:1.5px solid var(--bd);background:transparent;color:var(--mut)}
+.ytab.on{border-color:var(--acc);color:var(--acc);background:rgba(232,160,64,.08)}
+
+/* Period */
+.period{margin:0 12px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:9px 12px;font-size:.65rem;color:var(--mut)}
+.period b{color:var(--txt)}
+
+/* KFZ box */
+.kfz-box{margin:0 12px 12px;background:rgba(232,160,64,.06);border:1px solid rgba(232,160,64,.2);border-radius:8px;padding:12px}
+.kfz-title{font-size:.62rem;color:var(--acc);font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px}
+.kfz-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kfz-card{background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:10px}
+.kfz-name{font-size:.58rem;color:var(--acc);font-weight:700;margin-bottom:5px}
+.kfz-row{display:flex;justify-content:space-between;font-size:.68rem;padding:2px 0}
+.kfz-lbl{color:var(--mut)}.kfz-val{font-weight:600;font-size:.68rem}
+.kfz-tax{margin-top:5px;padding-top:4px;border-top:1px solid var(--bd);font-size:.6rem;color:var(--mut)}
+
+/* Kat cards */
+.kat-section{padding:0 12px;margin-bottom:12px}
+.sec-ttl{font-size:.85rem;font-weight:700;color:var(--acc);margin-bottom:8px}
+.kat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.kat-card{background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:10px}
+.kat-card.kfz{border-left:3px solid var(--acc)}
+.kat-head{display:flex;align-items:center;gap:5px;margin-bottom:7px}
+.kat-icon{font-size:.95rem}.kat-name{font-size:.6rem;font-weight:700;flex:1;color:var(--txt)}
+.kat-row{display:flex;justify-content:space-between;font-size:.68rem;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.kat-row:last-child{border:none}.kat-lbl{color:var(--mut)}.kat-val{font-weight:600;font-size:.68rem}
+.kat-tot{font-weight:700;font-size:.75rem;border-top:1px solid var(--bd);margin-top:3px;padding-top:5px;border-bottom:none}
+.kat-tax{font-size:.6rem;margin-top:4px;background:var(--s2);border-radius:3px;padding:4px 6px;color:var(--mut)}
+
+/* Export */
+.exp-bar{display:flex;gap:8px;padding:0 12px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.exp-note{font-size:.6rem;color:var(--mut)}
+
+/* Receipt cards */
+.rc-sec{padding:0 12px}
+.rc{background:var(--sf);border:1px solid var(--bd);border-radius:6px;overflow:hidden;margin-bottom:8px}
+.rc-hd{display:flex;justify-content:space-between;align-items:flex-start;padding:9px 11px 7px;border-bottom:1px solid var(--bd);gap:8px}
+.rc-n{font-size:.85rem;font-weight:600}
+.rc-d{font-size:.6rem;color:var(--mut);margin-top:2px}
+.rc-bdgs{display:flex;flex-direction:column;gap:3px;align-items:flex-end}
+.bdg{font-size:.58rem;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap}
+.b-ok{background:rgba(76,175,125,.2);color:var(--ok)}.b-w{background:rgba(232,80,64,.2);color:var(--warn)}.b-f{background:rgba(232,160,64,.2);color:var(--acc)}
+.rc-bd{padding:7px 11px}
+.ri{display:flex;justify-content:space-between;font-size:.7rem;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.ri:last-child{border:none}.rl{color:var(--mut)}.rv{font-weight:600;font-size:.7rem}
+.ri-t{font-size:.78rem;font-weight:700;border-top:1px solid var(--bd);margin-top:2px;padding-top:5px;border-bottom:none}
+.txb{background:var(--s2);border-radius:8px;padding:1px 5px;font-size:.58rem;font-weight:700}
+.rc-ft{padding:6px 11px;border-top:1px solid var(--bd);display:flex;gap:6px}
+.flg{background:rgba(232,80,64,.08);border:1px solid rgba(232,80,64,.2);border-radius:3px;padding:5px 11px;margin:4px 11px;font-size:.65rem;color:var(--warn)}
+.rc-img{padding:6px 11px}.rc-img img{width:100%;max-height:110px;object-fit:contain;border:1px solid var(--bd);border-radius:3px;cursor:zoom-in}
+
+/* Lightbox */
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:500;display:none;align-items:center;justify-content:center;padding:14px}
+.lb.on{display:flex}
+.lb img{max-width:100%;max-height:92vh;object-fit:contain;border-radius:5px}
+
+/* Parsing */
+.parsing{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:24px;display:none;flex-direction:column;align-items:center;gap:10px;text-align:center;margin:12px}
+.parsing.on{display:flex}
+.spin{width:30px;height:30px;border:3px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+.search-bar{display:flex;align-items:center;gap:8px;margin:12px 12px 0;background:var(--sf);border:1.5px solid var(--bd);border-radius:8px;padding:0 12px}
+.search-bar:focus-within{border-color:var(--acc)}
+.search-icon{font-size:.9rem;flex-shrink:0}
+.search-in{flex:1;background:none;border:none;color:var(--txt);font-size:.82rem;padding:12px 0;outline:none}
+.search-in::placeholder{color:var(--mut)}
+.search-in::-webkit-search-cancel-button{display:none}
+.search-clear{background:var(--s2);border:none;color:var(--mut);border-radius:50%;width:22px;height:22px;font-size:.65rem;cursor:pointer;flex-shrink:0}
+.search-info{margin:8px 12px 0;font-size:.68rem;color:var(--acc);font-weight:600}
+.search-info b{color:var(--txt)}
+.hl{background:rgba(232,160,64,.35);color:var(--txt);border-radius:2px;padding:0 2px;font-weight:700}
+.no-results{text-align:center;padding:30px 16px;color:var(--mut);font-size:.8rem}
+.reg-tabs{display:flex;gap:8px;padding:12px 12px 4px}
+.reg-tab{flex:1;padding:9px 12px;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;border:1.5px solid var(--bd);background:transparent;color:var(--mut);display:flex;align-items:center;justify-content:center;gap:6px}
+.reg-tab.on{border-color:var(--acc);color:var(--acc);background:rgba(232,160,64,.08)}
+.reg-tab#regDup.on{border-color:var(--warn);color:var(--warn);background:rgba(232,80,64,.08)}
+.reg-count{background:var(--warn);color:#fff;border-radius:10px;padding:0 7px;font-size:.6rem;min-width:18px;text-align:center}
+.dup-info{margin:0 12px 12px;background:rgba(232,80,64,.06);border:1px solid rgba(232,80,64,.25);border-radius:8px;padding:11px 14px;font-size:.7rem;color:var(--warn);line-height:1.6}
+.dup-info b{color:#ff8070}
+.rc.dup{border-left:3px solid var(--warn)}
+.dup-link{font-size:.6rem;color:var(--mut);margin-top:3px;font-style:italic}
+.exp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:615;display:none;align-items:flex-end;justify-content:center}
+.exp-overlay.on{display:flex}
+.exp-modal{background:var(--sf);border-top:3px solid var(--acc);border-radius:14px 14px 0 0;width:100%;max-width:600px;max-height:90vh;display:flex;flex-direction:column;animation:slideUp .25s ease}
+.exp-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px 10px;border-bottom:1px solid var(--bd)}
+.exp-head h3{font-size:1.05rem;color:var(--acc)}
+.exp-modal-body{padding:14px 18px;overflow-y:auto;flex:1}
+.exp-modal-sub{font-size:.74rem;color:var(--mut);margin-bottom:12px;line-height:1.5}
+.exp-options{display:flex;flex-direction:column;gap:8px}
+.exp-opt{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1.5px solid var(--bd);border-radius:8px;cursor:pointer;background:var(--bg);transition:all .15s}
+.exp-opt:active{border-color:var(--acc)}
+.exp-opt.sel{border-color:var(--acc);background:rgba(232,160,64,.08)}
+.exp-opt-check{width:22px;height:22px;border:2px solid var(--bd);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#000}
+.exp-opt.sel .exp-opt-check{background:var(--acc);border-color:var(--acc)}
+.exp-opt-info{flex:1}
+.exp-opt-title{font-size:.85rem;font-weight:700;color:var(--txt)}
+.exp-opt-sub{font-size:.64rem;color:var(--mut);margin-top:2px}
+.exp-modal-btns{display:flex;gap:8px;padding:12px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--bd)}
+.det-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:620;display:none;align-items:center;justify-content:center;padding:14px}
+.det-overlay.on{display:flex}
+.det-modal{background:var(--sf);border:1px solid var(--acc);border-radius:12px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:slideUp .25s ease}
+.det-head{display:flex;justify-content:space-between;align-items:flex-start;padding:18px 18px 12px;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--sf)}
+.det-head h3{font-size:1.15rem;color:var(--acc)}
+.det-head .det-sub{font-size:.66rem;color:var(--mut);margin-top:3px}
+.det-close{background:var(--s2);border:none;color:var(--mut);font-size:1rem;cursor:pointer;border-radius:50%;width:30px;height:30px;flex-shrink:0}
+.det-body{padding:16px 18px}
+.det-section{margin-bottom:16px}
+.det-section-ttl{font-size:.6rem;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:7px}
+.det-field{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.8rem}
+.det-field:last-child{border:none}
+.det-field .dl{color:var(--mut)}
+.det-field .dv{font-weight:600;text-align:right}
+.det-tax-table{background:var(--s2);border-radius:7px;padding:10px 12px;margin-top:6px}
+.det-tax-row{display:flex;justify-content:space-between;font-size:.76rem;padding:3px 0}
+.det-tax-row.tot{border-top:1px solid var(--bd);margin-top:4px;padding-top:7px;font-weight:700}
+.det-check{border-radius:7px;padding:10px 12px;margin-top:6px;font-size:.74rem}
+.det-check.ok{background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);color:var(--ok)}
+.det-check.err{background:rgba(232,80,64,.1);border:1px solid rgba(232,80,64,.3);color:var(--warn)}
+.det-check-row{display:flex;justify-content:space-between;padding:2px 0}
+.det-img{width:100%;border-radius:8px;border:1px solid var(--bd);margin-top:6px;cursor:zoom-in}
+.det-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.man-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:610;display:none;align-items:flex-end;justify-content:center}
+.man-overlay.on{display:flex}
+.man-modal{background:var(--sf);border-top:3px solid var(--acc);border-radius:14px 14px 0 0;width:100%;max-width:600px;max-height:90vh;display:flex;flex-direction:column;animation:slideUp .25s ease}
+.man-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;border-bottom:1px solid var(--bd)}
+.man-head h3{font-size:1.05rem;color:var(--acc)}
+.man-close{background:none;border:none;color:var(--mut);font-size:1.2rem;cursor:pointer;padding:4px 8px}
+.man-body{padding:14px 18px;overflow-y:auto;flex:1}
+.man-lbl{display:block;font-size:.62rem;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin:10px 0 4px}
+.man-in{width:100%;padding:11px 12px;border:1.5px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--txt);font-size:.9rem;-webkit-appearance:none;appearance:none}
+.man-in:focus{outline:none;border-color:var(--acc)}
+.man-row{display:flex;gap:10px}
+.man-calc{margin-top:14px;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:.75rem;color:var(--acc);font-weight:600;text-align:center}
+.man-btns{display:flex;gap:8px;padding:12px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--bd)}
+.tip-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:none;align-items:flex-end;justify-content:center}
+.tip-overlay.on{display:flex}
+.tip-modal{background:var(--sf);border-top:3px solid var(--acc);border-radius:14px 14px 0 0;width:100%;max-width:600px;padding:22px 18px calc(22px + env(safe-area-inset-bottom));animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.tip-icon{font-size:2rem;text-align:center;margin-bottom:6px}
+.tip-modal h3{font-size:1.1rem;color:var(--acc);text-align:center;margin-bottom:4px}
+.tip-sub{font-size:.72rem;color:var(--mut);text-align:center;line-height:1.5;margin-bottom:14px}
+.tip-receipt{background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:9px 12px;margin-bottom:14px;font-size:.7rem;color:var(--txt)}
+.tip-receipt b{color:var(--acc)}
+.tip-label{display:block;font-size:.65rem;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px}
+.tip-input{width:100%;padding:13px 14px;border:1.5px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--txt);font-size:1.1rem;font-weight:700;text-align:center;-webkit-appearance:none;appearance:none}
+.tip-input:focus{outline:none;border-color:var(--acc)}
+.tip-quick{display:flex;gap:7px;margin:12px 0;flex-wrap:wrap}
+.tip-quick button{flex:1;min-width:60px;padding:9px 6px;border:1.5px solid var(--bd);background:transparent;color:var(--txt);border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer}
+.tip-quick button:active{background:var(--acc);color:#000;border-color:var(--acc)}
+.tip-btns{display:flex;gap:8px;margin-top:6px}
+.hidden{display:none}
+@media(max-width:360px){.sum-grid,.kfz-grid,.kat-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="hdr">
+    <h1>⚡ Reisekosten Agent</h1>
+    <div class="hdr-sub">Persistent · KFZ separat · Auto-Excel · ☁️ Drive</div>
+    <div class="hdr-stat" id="hdrStat">Lade Belege…</div>
+    <button class="drive-btn" id="driveBtn" onclick="driveLogin()">☁️ Mit Google Drive verbinden</button>
+  </div>
+
+  <!-- Install Banner (shown when installable) -->
+  <div class="install-banner hidden" id="installBanner">
+    <p>📲 Als App installieren — funktioniert wie eine echte Android-App!</p>
+    <button onclick="installPWA()">Installieren</button>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-sec">
+    <div class="drop" id="dropZone"
+      ondrop="handleDrop(event)" ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')">
+      <div class="drop-icon">📎</div>
+      <h3>Neue Belege hinzufügen</h3>
+      <p>Foto aufnehmen oder Bild wählen</p>
+      <label class="drop-btn">📷 Foto aufnehmen
+        <input type="file" accept="image/*" capture="environment" style="display:none" onchange="handleFileInput(event)">
+      </label>
+      <label class="cam-btn">🖼 Aus Galerie wählen
+        <input type="file" accept="image/*" multiple style="display:none" onchange="handleFileInput(event)">
+      </label>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="scan-bar" id="scanBar" style="display:none">
+      <button class="btn btn-p" id="scanBtn" onclick="startScan()">▶ Scannen &amp; Speichern</button>
+      <button class="btn btn-o btn-sm" onclick="clearImages()">✕ Verwerfen</button>
+    </div>
+    <button class="btn btn-o" style="width:100%;margin-top:10px" onclick="openManual()">✏️ Beleg manuell erfassen (Taggeld, Nächtigung …)</button>
+  </div>
+
+  <!-- Parsing overlay -->
+  <div class="parsing" id="parsingBox">
+    <div class="spin"></div>
+    <p style="font-size:.75rem;color:var(--mut)">KI liest Belege aus…</p>
+    <p id="parseProgress" style="font-size:.68rem;color:var(--acc)"></p>
+  </div>
+
+  <!-- Log -->
+  <div class="log-wrap" id="logWrap" style="display:none">
+    <div class="log-hdr"><span>Protokoll</span><span id="logCount">0 Einträge</span></div>
+    <div class="log-body" id="logBody"></div>
+  </div>
+
+  <!-- Summary -->
+  <div id="resultSection" style="display:none">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="search" id="searchInput" class="search-in" placeholder="Volltextsuche: Aussteller, Datum, Betrag, Kategorie, Steuersatz…" oninput="onSearch()" autocomplete="off">
+      <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
+    </div>
+    <div class="search-info" id="searchInfo" style="display:none"></div>
+    <div class="sum-grid">
+      <div class="sum-card"><div class="sum-lbl">Gesamt Brutto</div><div class="sum-val a" id="sumBrutto">–</div></div>
+      <div class="sum-card"><div class="sum-lbl">Gesamt Netto</div><div class="sum-val" id="sumNetto">–</div></div>
+      <div class="sum-card"><div class="sum-lbl">Gesamt Steuer</div><div class="sum-val" id="sumSteuer">–</div></div>
+      <div class="sum-card"><div class="sum-lbl">Belege</div><div class="sum-val g" id="sumCount">–</div></div>
+    </div>
+
+    <div class="reg-tabs" id="regTabs">
+      <button class="reg-tab on" id="regMain" onclick="setRegister('main')">📋 Belege</button>
+      <button class="reg-tab" id="regDup" onclick="setRegister('dup')" style="display:none">🔁 Doppelte <span class="reg-count" id="dupCount">0</span></button>
+    </div>
+    <div class="period" id="periodBar" style="display:none"></div>
+    <div class="ytabs" id="yearTabs"></div>
+    <div class="kfz-box" id="kfzBox" style="display:none">
+      <div class="kfz-title">⛽🅿 KFZ-Steuer separat ausgewiesen</div>
+      <div class="kfz-grid" id="kfzGrid"></div>
+    </div>
+    <div class="kat-section">
+      <div class="sec-ttl">Kategorien</div>
+      <div class="kat-grid" id="katGrid"></div>
+    </div>
+    <div class="exp-bar">
+      <button class="btn btn-p" onclick="openExportModal()">🔄 Auswertung neu erstellen</button>
+      <button class="btn btn-o" onclick="doExport()">📊 Alle exportieren</button>
+    </div>
+    <div class="exp-note" id="expNote" style="padding:0 12px;margin-bottom:14px">Automatische Excel-Erstellung nach jedem Beleg aktiv ✓</div>
+    <div class="rc-sec">
+      <div class="sec-ttl" id="rcTitle">Alle Belege</div>
+      <div id="rcList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Neue Abrechnung Modal (beim Start) -->
+<div class="man-overlay" id="newExcelOverlay">
+  <div class="man-modal">
+    <div class="man-head">
+      <h3>📊 Abrechnung</h3>
+    </div>
+    <div class="man-body">
+      <p class="exp-modal-sub" id="newExcelInfo">Möchtest du eine neue Abrechnung mit eigenem Namen anlegen, oder die bestehende fortführen?</p>
+      <label class="man-lbl">Name der neuen Abrechnung</label>
+      <input type="text" id="newExcelName" class="man-in" placeholder="z.B. Dienstreise_Wien_Juni">
+      <p style="font-size:.62rem;color:var(--mut);margin-top:6px">Neue Belege werden dieser Abrechnung zugeordnet. Die Excel-Datei trägt diesen Namen (+ _AKTUELL / _BACKUP).</p>
+    </div>
+    <div class="man-btns">
+      <button class="btn btn-p" style="flex:1" onclick="createNewExcel()">✓ Neue Abrechnung anlegen</button>
+      <button class="btn btn-o" onclick="keepCurrentExcel()">Bestehende fortführen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export-Auswahl Modal -->
+<div class="exp-overlay" id="expOverlay" onclick="if(event.target===this)closeExportModal()">
+  <div class="exp-modal">
+    <div class="exp-head">
+      <h3>🔄 Auswertung neu erstellen</h3>
+      <button class="det-close" onclick="closeExportModal()">✕</button>
+    </div>
+    <div class="exp-modal-body">
+      <p class="exp-modal-sub">Wähle, welche Excel-Auswertung neu erstellt werden soll:</p>
+      <div class="exp-options" id="expOptions"></div>
+    </div>
+    <div class="exp-modal-btns">
+      <button class="btn btn-p" style="flex:1" onclick="runSelectedExport()">📊 Ausgewählte erstellen</button>
+      <button class="btn btn-o" onclick="closeExportModal()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="det-overlay" id="detOverlay" onclick="if(event.target===this)closeDetail()">
+  <div class="det-modal" id="detModal"></div>
+</div>
+
+<!-- Manuelle Erfassung Modal -->
+<div class="man-overlay" id="manOverlay">
+  <div class="man-modal">
+    <div class="man-head">
+      <h3>✏️ Beleg manuell erfassen</h3>
+      <button class="man-close" onclick="closeManual()">✕</button>
+    </div>
+    <div class="man-body">
+      <label class="man-lbl">Typ / Pauschale</label>
+      <select id="manTyp" class="man-in" onchange="onManTyp()">
+        <option>Taggeld</option>
+        <option>Nächtigungspauschale</option>
+        <option>Kilometergeld</option>
+        <option>Trinkgeld / Service</option>
+        <option>Parken</option>
+        <option>Öffentliche Verkehrsmittel</option>
+        <option>Reinigungsmittel</option>
+        <option>Verbrauchswaren</option>
+        <option>GWG (< €1000)</option>
+        <option>Wirtschaftsgut (> €1000)</option>
+        <option>Sonstiges</option>
+      </select>
+
+      <div class="man-row">
+        <div style="flex:1">
+          <label class="man-lbl">Datum *</label>
+          <input type="date" id="manDatum" class="man-in">
+        </div>
+        <div style="width:110px">
+          <label class="man-lbl">Uhrzeit</label>
+          <input type="time" id="manUhrzeit" class="man-in">
+        </div>
+      </div>
+
+      <label class="man-lbl">Aussteller / Bezeichnung</label>
+      <input type="text" id="manAussteller" class="man-in" placeholder="z.B. Taggeld Inland">
+
+      <label class="man-lbl">Beschreibung</label>
+      <input type="text" id="manBeschreibung" class="man-in" placeholder="optional">
+
+      <label class="man-lbl">Kategorie</label>
+      <select id="manKategorie" class="man-in">
+        <option>Verpflegung</option>
+        <option>Unterkunft</option>
+        <option>KFZ Parken</option>
+        <option>KFZ Treibstoff / Reinigung</option>
+        <option>Öffentliche Verkehrsmittel</option>
+        <option>Reinigungsmittel</option>
+        <option>Verbrauchswaren</option>
+        <option>GWG < €1000</option>
+        <option>WG > €1000</option>
+        <option>Sonstiges</option>
+      </select>
+
+      <label class="man-lbl">Steuersatz</label>
+      <select id="manSatz" class="man-in" onchange="calcManual()">
+        <option value="0">0% — steuerfrei (Pauschalen)</option>
+        <option value="10">10% — ermäßigt</option>
+        <option value="13">13%</option>
+        <option value="20">20% — Normalsatz</option>
+      </select>
+
+      <div class="man-row">
+        <div style="flex:1">
+          <label class="man-lbl">Bruttobetrag (€) *</label>
+          <input type="number" inputmode="decimal" step="0.01" id="manBrutto" class="man-in" placeholder="0,00" oninput="calcManual()">
+        </div>
+      </div>
+
+      <div class="man-calc" id="manCalc">Netto: – · Steuer: –</div>
+    </div>
+    <div class="man-btns">
+      <button class="btn btn-p" style="flex:1" onclick="saveManual()">✓ Beleg speichern</button>
+      <button class="btn btn-o" onclick="closeManual()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Trinkgeld Modal -->
+<div class="tip-overlay" id="tipOverlay">
+  <div class="tip-modal">
+    <div class="tip-icon">🧾</div>
+    <h3 id="tipTitle">Trinkgeld / Service?</h3>
+    <p class="tip-sub" id="tipSub">Bewirtungsbeleg erkannt. Wurde Trinkgeld oder Service gegeben?</p>
+    <div class="tip-receipt" id="tipReceipt"></div>
+    <label class="tip-label">Trinkgeld / Service (€) — 0% Steuer</label>
+    <input type="number" inputmode="decimal" step="0.01" id="tipInput" placeholder="0,00" class="tip-input">
+    <div class="tip-quick" id="tipQuick"></div>
+    <div class="tip-btns">
+      <button class="btn btn-p" style="flex:1" onclick="confirmTip()">✓ Übernehmen</button>
+      <button class="btn btn-o" onclick="skipTip()">Kein Trinkgeld</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lb" id="lb" onclick="this.classList.remove('on')">
+  <img id="lbImg" src="" alt="">
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'rk_belege_v4';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GOOGLE DRIVE INTEGRATION
+// ───────────────────────────────────────────────────────────────────────────
+// ⚠️ HIER deine OAuth-Client-ID eintragen (aus Google Cloud Console):
+const GOOGLE_CLIENT_ID = ''; // z.B. '1234567890-abc.apps.googleusercontent.com'
+// ───────────────────────────────────────────────────────────────────────────
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+let driveToken = null;
+let driveFolders = {}; // {reisekosten, belege, auswertung}
+
+function driveReady(){ return GOOGLE_CLIENT_ID && driveToken; }
+
+// Google Identity Services laden
+function loadGoogleAuth(){
+  return new Promise((resolve)=>{
+    if(window.google && window.google.accounts){ resolve(); return; }
+    const s=document.createElement('script');
+    s.src='https://accounts.google.com/gsi/client';
+    s.onload=()=>resolve(); s.onerror=()=>resolve();
+    document.head.appendChild(s);
+  });
+}
+
+async function driveLogin(){
+  if(!GOOGLE_CLIENT_ID){
+    alert('Google-Login noch nicht konfiguriert.\n\nBitte zuerst die OAuth-Client-ID in der App eintragen (Anleitung im Chat).');
+    return;
+  }
+  await loadGoogleAuth();
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: async (resp)=>{
+      if(resp.access_token){
+        driveToken=resp.access_token;
+        addLog('ok','☁️','Mit Google Drive verbunden');
+        await ensureDriveFolders();
+        updateDriveUI();
+      }
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+
+// Ordnerstruktur sicherstellen: Reisekosten / {Belege, Auswertung}
+async function ensureDriveFolders(){
+  driveFolders.reisekosten = await findOrCreateFolder('Reisekosten', null);
+  driveFolders.belege      = await findOrCreateFolder('Belege', driveFolders.reisekosten);
+  driveFolders.auswertung  = await findOrCreateFolder('Auswertung', driveFolders.reisekosten);
+}
+async function findOrCreateFolder(name, parentId){
+  const q=encodeURIComponent(`name='${name}' and mimeType='application/vnd.google-apps.folder'${parentId?` and '${parentId}' in parents`:''} and trashed=false`);
+  const res=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,{headers:{Authorization:'Bearer '+driveToken}});
+  const data=await res.json();
+  if(data.files && data.files.length) return data.files[0].id;
+  const meta={name,mimeType:'application/vnd.google-apps.folder'};
+  if(parentId) meta.parents=[parentId];
+  const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+driveToken,'Content-Type':'application/json'},body:JSON.stringify(meta)});
+  return (await cr.json()).id;
+}
+
+// Datei (base64 oder Blob) in Drive-Ordner hochladen
+async function uploadToDrive(filename, mimeType, dataB64OrBlob, folderId){
+  if(!driveReady()) return null;
+  const boundary='-------rk'+Date.now();
+  let body;
+  const meta={name:filename, parents:[folderId]};
+  if(typeof dataB64OrBlob==='string'){
+    // data URL → reiner base64
+    const b64=dataB64OrBlob.includes(',')?dataB64OrBlob.split(',')[1]:dataB64OrBlob;
+    body=`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64}\r\n--${boundary}--`;
+    const res=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+driveToken,'Content-Type':`multipart/related; boundary=${boundary}`},body});
+    return (await res.json()).id;
+  }
+}
+
+function updateDriveUI(){
+  const btn=$('driveBtn');
+  if(!btn) return;
+  if(driveReady()){ btn.textContent='☁️ Drive verbunden'; btn.classList.add('connected'); }
+  else { btn.textContent='☁️ Mit Google Drive verbinden'; btn.classList.remove('connected'); }
+}
+// ═══════════════════════════════════════════════════════════════════════════
+const KFZ_CATS = ['KFZ Parken','KFZ Treibstoff / Reinigung'];
+const KATEGORIEN = ['Verpflegung','Unterkunft','KFZ Parken','KFZ Treibstoff / Reinigung','Öffentliche Verkehrsmittel','Reinigungsmittel','Verbrauchswaren','GWG < €1000','WG > €1000','Sonstiges'];
+const KAT_META = {
+  'Verpflegung':{'icon':'🍽','color':'#4caf7d'},
+  'Unterkunft':{'icon':'🏨','color':'#80aaff'},
+  'KFZ Parken':{'icon':'🅿','color':'#e8c040'},
+  'KFZ Treibstoff / Reinigung':{'icon':'⛽','color':'#e87828'},
+  'Öffentliche Verkehrsmittel':{'icon':'🚆','color':'#b464ff'},
+  'Reinigungsmittel':{'icon':'🧼','color':'#3fc7d4'},
+  'Verbrauchswaren':{'icon':'📦','color':'#d4a03f'},
+  'GWG < €1000':{'icon':'🔧','color':'#9ad43f'},
+  'WG > €1000':{'icon':'🏗','color':'#d43f9a'},
+  'Sonstiges':{'icon':'📎','color':'#aaaaaa'},
+};
+const SEED = [
+  {id:1001,datum:'2026-05-08',uhrzeit:'10:20',aussteller:'Eni Service-Station, Brunn am Gebirge',beschreibung:'Diesel 52,27 L × 1,949 €/L',netto:84.89,brutto:101.87,waehrung:'EUR',steuern:[{satz:20,betrag:16.98}],kategorie:'KFZ Treibstoff / Reinigung',flag:null,image:null},
+  {id:1002,datum:'2026-05-16',uhrzeit:'17:56',aussteller:'BILLA AG, Tulln',beschreibung:'Lebensmittel (Süßwaren, Getränke)',netto:46.20,brutto:53.67,waehrung:'EUR',steuern:[{satz:10,betrag:1.77},{satz:20,betrag:5.70}],kategorie:'Verpflegung',flag:null,image:null},
+  {id:1003,datum:'2026-05-17',uhrzeit:'11:43',aussteller:'Anton Starkl GmbH, Tulln',beschreibung:'Gartenbedarf (Erde, Dünger, Pflanzen)',netto:59.63,brutto:68.69,waehrung:'EUR',steuern:[{satz:10,betrag:0.91},{satz:13,betrag:3.65},{satz:20,betrag:4.50}],kategorie:'Sonstiges',flag:null,image:null},
+  {id:1004,datum:'2026-05-22',uhrzeit:'17:00',aussteller:'BILLA AG, Wien Schottengasse',beschreibung:'Lebensmittel + Pfand',netto:3.49,brutto:4.03,waehrung:'EUR',steuern:[{satz:10,betrag:0.11},{satz:20,betrag:0.43}],kategorie:'Verpflegung',flag:null,image:null},
+  {id:1005,datum:'2026-05-22',uhrzeit:'13:07',aussteller:'Radatz, Wien Schottengasse 3a',beschreibung:'Fleischwaren & Gebäck',netto:9.01,brutto:9.91,waehrung:'EUR',steuern:[{satz:10,betrag:0.90}],kategorie:'Verpflegung',flag:null,image:null},
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let allBelege = [];
+let duplicates = [];   // erkannte Dubletten
+let pendingImages = [];
+let thumbStatus = {};
+let yearFilter = 'all';
+let register = 'main';   // 'main' | 'dup'
+let searchQuery = '';
+let currentExcel = '';   // Name der aktuellen Abrechnungs-Excel
+let logs = [];
+let deferredInstall = null;
+
+// ─── PWA INSTALL ──────────────────────────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  document.getElementById('installBanner').classList.remove('hidden');
+});
+function installPWA() {
+  if(!deferredInstall) return;
+  deferredInstall.prompt();
+  deferredInstall.userChoice.then(r => {
+    if(r.outcome==='accepted') document.getElementById('installBanner').classList.add('hidden');
+  });
+}
+// Inline manifest via blob
+const manifest = {
+  name:'Reisekostenabrechnung',short_name:'Reisekosten',
+  description:'KI-gestützte Reisekostenabrechnung mit KFZ-Steuer',
+  start_url:'./',display:'standalone',orientation:'portrait',
+  theme_color:'#1a1612',background_color:'#0f0e0c',
+  icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%231a1814"/><text y=".9em" font-size="70" x="15">🧾</text></svg>',sizes:'192x192',type:'image/svg+xml'},{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%231a1814"/><text y=".9em" font-size="70" x="15">🧾</text></svg>',sizes:'512x512',type:'image/svg+xml'}]
+};
+const mBlob = new Blob([JSON.stringify(manifest)],{type:'application/json'});
+document.getElementById('manifestLink').href = URL.createObjectURL(mBlob);
+
+// ─── SERVICE WORKER (inline) ──────────────────────────────────────────────────
+const swCode = `
+const CACHE='rk-v1';
+const ASSETS=['./'];
+self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));
+self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>new Response('Offline')))));
+`;
+if('serviceWorker' in navigator) {
+  const swBlob = new Blob([swCode],{type:'text/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(swBlob),{scope:'./'}).catch(()=>{});
+}
+
+// ─── STORAGE ──────────────────────────────────────────────────────────────────
+function loadBelege() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if(s) { const p=JSON.parse(s); return p.length?p:SEED; }
+  } catch{}
+  return SEED;
+}
+function saveBelege() {
+  try {
+    // Save without images to keep storage small; images stored separately
+    const slim = allBelege.map(b=>({...b,image:b.image?'[IMG]':null}));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+    const dupSlim = duplicates.map(b=>({...b,image:b.image?'[IMG]':null}));
+    localStorage.setItem(STORAGE_KEY+'_dup', JSON.stringify(dupSlim));
+    // Store images separately per id
+    [...allBelege,...duplicates].forEach(b=>{ if(b.image&&b.image!=='[IMG]') try{localStorage.setItem('rk_img_'+b.id,b.image);}catch{} });
+  } catch(e) {
+    addLog('warn','💾','Speicher voll — Fotos nicht gespeichert (Beträge ok)');
+  }
+}
+function loadDuplicates(){
+  try { const s=localStorage.getItem(STORAGE_KEY+'_dup'); if(s) return JSON.parse(s); } catch{}
+  return [];
+}
+function loadImages() {
+  [...allBelege,...duplicates].forEach(b=>{ if(b.image==='[IMG]') { const img=localStorage.getItem('rk_img_'+b.id); b.image=img||null; }});
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt=n=>Number(n||0).toLocaleString('de-AT',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtD=d=>d?new Date(d).toLocaleDateString('de-AT'):'–';
+const r=n=>Math.round(n*100)/100;
+const uid=()=>Date.now()+Math.random();
+const year=d=>d?new Date(d).getFullYear():null;
+const $=id=>document.getElementById(id);
+
+// Dubletten-Erkennung: gleicher Aussteller + Datum + Brutto (+ Uhrzeit wenn vorhanden)
+function dupKey(b){
+  const ausst=(b.aussteller||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const datum=b.datum||'';
+  const uhr=b.uhrzeit||'';
+  const brutto=Number(b.brutto||0).toFixed(2);
+  return `${ausst}|${datum}|${uhr}|${brutto}`;
+}
+function findDuplicate(candidate, list){
+  const k=dupKey(candidate);
+  return list.find(b=>dupKey(b)===k) || null;
+}
+
+// ─── LOG ──────────────────────────────────────────────────────────────────────
+function addLog(type,icon,txt) {
+  logs.push({type,icon,txt,id:uid()});
+  const clsMap={ok:'lt-ok',acc:'lt-acc',warn:'lt-warn',info:'lt-info'};
+  const el=document.createElement('div');
+  el.className='le';
+  el.innerHTML=`<span class="li">${icon}</span><span class="lt ${clsMap[type]||'lt-info'}">${type}</span><span class="lx">${txt}</span>`;
+  const body=$('logBody'); body.appendChild(el); body.scrollTop=body.scrollHeight;
+  $('logWrap').style.display='';
+  $('logCount').textContent=`${logs.length} Einträge`;
+}
+
+// ─── FILE HANDLING ────────────────────────────────────────────────────────────
+function handleFileInput(e) {
+  Array.from(e.target.files).forEach(readFile);
+  e.target.value='';
+}
+function handleDrop(e) {
+  e.preventDefault(); $('dropZone').classList.remove('drag');
+  Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/')).forEach(readFile);
+}
+document.addEventListener('paste', e=>{
+  const imgs=Array.from(e.clipboardData?.items||[]).filter(i=>i.type.startsWith('image/')).map(i=>i.getAsFile()).filter(Boolean);
+  imgs.forEach(readFile);
+});
+function readFile(f) {
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    compressImage(ev.target.result, (compressed, info)=>{
+      pendingImages.push({src:compressed, mime:'image/jpeg', id:uid(), origSize:info.orig, newSize:info.neu});
+      renderThumbs();
+    });
+  };
+  reader.readAsDataURL(f);
+}
+
+// ── Bildkompression: 12 MB → ~150-300 KB ──
+// max. 1600px lange Kante, JPEG Qualität 0.7
+function compressImage(dataUrl, callback){
+  const origSize=Math.round(dataUrl.length*0.75); // base64 → ~bytes
+  const img=new Image();
+  img.onload=()=>{
+    const MAX=1600;
+    let w=img.width, h=img.height;
+    if(w>h && w>MAX){ h=Math.round(h*MAX/w); w=MAX; }
+    else if(h>=w && h>MAX){ w=Math.round(w*MAX/h); h=MAX; }
+    const canvas=document.createElement('canvas');
+    canvas.width=w; canvas.height=h;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
+    ctx.drawImage(img,0,0,w,h);
+    let quality=0.7;
+    let out=canvas.toDataURL('image/jpeg',quality);
+    // Falls immer noch > 400 KB: Qualität schrittweise senken
+    while(out.length*0.75>400000 && quality>0.4){
+      quality-=0.1;
+      out=canvas.toDataURL('image/jpeg',quality);
+    }
+    const newSize=Math.round(out.length*0.75);
+    callback(out, {orig:origSize, neu:newSize, w, h, quality:quality.toFixed(1)});
+  };
+  img.onerror=()=>callback(dataUrl, {orig:origSize, neu:origSize}); // Fallback: Original
+  img.src=dataUrl;
+}
+function fmtKB(bytes){ return bytes>1048576 ? (bytes/1048576).toFixed(1)+' MB' : Math.round(bytes/1024)+' KB'; }
+function renderThumbs() {
+  const c=$('thumbs');
+  c.innerHTML=pendingImages.map((img,i)=>`
+    <div class="thumb" id="th_${img.id}">
+      <img src="${img.src}" onclick="openLb('${img.src}')">
+      <button class="tdel" onclick="removeImg('${img.id}')">✕</button>
+      <div class="ts ts-w" id="ts_${img.id}">#${i+1}</div>
+    </div>`).join('');
+  $('scanBar').style.display=pendingImages.length?'':'none';
+}
+function removeImg(id) { pendingImages=pendingImages.filter(x=>x.id!==id); renderThumbs(); }
+function clearImages() { pendingImages=[]; thumbStatus={}; renderThumbs(); }
+
+// ─── AI SCAN ──────────────────────────────────────────────────────────────────
+async function scanOne(img) {
+  const b64=img.src.split(',')[1];
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:img.mime,data:b64}},
+        {type:'text',text:`Lies diesen Beleg. Gib NUR dieses JSON zurück:
+{"datum":"YYYY-MM-DD","uhrzeit":"HH:MM","aussteller":"Name","netto":0.00,"brutto":0.00,"steuern":[{"satz":20,"betrag":0.00}],"beschreibung":"kurz","waehrung":"EUR","trinkgeld":null}
+Fehlende Werte=null. uhrzeit nur wenn am Beleg vorhanden (sonst null). betrag=netto*satz/100.
+trinkgeld: NUR setzen wenn auf dem Beleg eine Position wie "Trinkgeld", "Service", "Tip", "Bedienung" oder "Servicepauschale" mit Betrag ausgewiesen ist (dann diesen Betrag als Zahl, sonst null).`}
+      ]}]})
+  });
+  const d=await res.json();
+  const txt=(d.content||[]).map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+  return JSON.parse(txt);
+}
+
+async function categorizeOne(parsed) {
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,
+      messages:[{role:'user',content:`Kategorisiere diesen Beleg. Aussteller: "${parsed.aussteller}", Beschreibung: "${parsed.beschreibung}", Nettobetrag: ${parsed.netto} €.
+Wähle EINE Kategorie: ${KATEGORIEN.join(', ')}.
+KFZ Parken: Parkschein/Parkhaus/Kurzparkzone.
+KFZ Treibstoff / Reinigung: Diesel/Benzin/Tankstelle/Autowäsche.
+Verpflegung: Essen/Restaurant/Supermarkt/Lebensmittel/Getränke.
+Unterkunft: Hotel/Pension/Airbnb.
+Öffentliche Verkehrsmittel: Bahn/Bus/U-Bahn/Taxi/Ticket.
+Reinigungsmittel: Putzmittel/Reiniger/Waschmittel/Hygieneartikel/Desinfektion.
+Verbrauchswaren: Büromaterial/Papier/Toner/Kleinverbrauch/Verbrauchsgüter ohne längere Nutzungsdauer.
+GWG < €1000: Geringwertige Wirtschaftsgüter (Werkzeug, Geräte, Möbel, Technik) mit Nettowert UNTER 1000 €.
+WG > €1000: Wirtschaftsgüter/Anlagegüter mit Nettowert ÜBER 1000 € (aktivierungspflichtig).
+Sonstiges: alles andere.
+Wichtig: Bei Geräten/Werkzeug/Technik/Möbeln richtet sich GWG vs WG nach dem Nettobetrag (Grenze 1000 €).
+Antworte NUR mit dem exakten Kategorienamen.`}]})
+  });
+  const d=await res.json();
+  const kat=(d.content||[]).map(c=>c.text||'').join('').trim();
+  return KATEGORIEN.includes(kat)?kat:'Sonstiges';
+}
+
+// ── Manuelle Belegerfassung ──
+const TYP_DEFAULTS = {
+  'Taggeld':                {kat:'Verpflegung', satz:'0', beschr:'Taggeld (Diäten)'},
+  'Nächtigungspauschale':   {kat:'Unterkunft',  satz:'0', beschr:'Nächtigungspauschale'},
+  'Kilometergeld':          {kat:'KFZ Treibstoff / Reinigung', satz:'0', beschr:'Kilometergeld'},
+  'Trinkgeld / Service':    {kat:'Verpflegung', satz:'0', beschr:'Trinkgeld / Service'},
+  'Parken':                 {kat:'KFZ Parken',  satz:'20', beschr:'Parkgebühr'},
+  'Öffentliche Verkehrsmittel':{kat:'Öffentliche Verkehrsmittel', satz:'10', beschr:'Fahrkarte'},
+  'Reinigungsmittel':       {kat:'Reinigungsmittel', satz:'20', beschr:'Reinigungsmittel'},
+  'Verbrauchswaren':        {kat:'Verbrauchswaren', satz:'20', beschr:'Verbrauchswaren'},
+  'GWG (< €1000)':          {kat:'GWG < €1000', satz:'20', beschr:'Geringwertiges Wirtschaftsgut'},
+  'Wirtschaftsgut (> €1000)':{kat:'WG > €1000', satz:'20', beschr:'Wirtschaftsgut (aktivierungspflichtig)'},
+  'Sonstiges':              {kat:'Sonstiges',   satz:'20', beschr:''},
+};
+function openManual(){
+  const today=new Date().toISOString().slice(0,10);
+  $('manDatum').value=today;
+  $('manUhrzeit').value='';
+  $('manBrutto').value='';
+  $('manBeschreibung').value='';
+  onManTyp();
+  $('manOverlay').classList.add('on');
+}
+function closeManual(){ $('manOverlay').classList.remove('on'); }
+function onManTyp(){
+  const typ=$('manTyp').value;
+  const d=TYP_DEFAULTS[typ]||{kat:'Sonstiges',satz:'20',beschr:''};
+  $('manKategorie').value=d.kat;
+  $('manSatz').value=d.satz;
+  $('manAussteller').value=typ;
+  $('manBeschreibung').value=d.beschr;
+  calcManual();
+}
+function calcManual(){
+  const brutto=parseFloat(($('manBrutto').value||'').replace(',','.'))||0;
+  const satz=parseFloat($('manSatz').value)||0;
+  let netto, steuer;
+  if(satz>0){ netto=r(brutto/(1+satz/100)); steuer=r(brutto-netto); }
+  else { netto=r(brutto); steuer=0; }
+  $('manCalc').textContent = brutto>0
+    ? `Netto: ${fmt(netto)} € · Steuer (${satz}%): ${fmt(steuer)} € · Brutto: ${fmt(brutto)} €`
+    : 'Netto: – · Steuer: –';
+}
+function saveManual(){
+  const datum=$('manDatum').value;
+  const brutto=r(parseFloat(($('manBrutto').value||'').replace(',','.'))||0);
+  if(!datum){ alert('Bitte Datum angeben.'); return; }
+  if(brutto<=0){ alert('Bitte Bruttobetrag angeben.'); return; }
+  const satz=parseFloat($('manSatz').value)||0;
+  let netto, steuerBetrag, steuern;
+  if(satz>0){
+    netto=r(brutto/(1+satz/100));
+    steuerBetrag=r(brutto-netto);
+    steuern=[{satz:satz, betrag:steuerBetrag}];
+  } else {
+    netto=brutto; steuerBetrag=0;
+    // 0%-Position mit explizitem netto/brutto (wie Trinkgeld/Pfand)
+    steuern=[{satz:0, betrag:0, netto:brutto, brutto:brutto, position:'Pauschale (0%)'}];
+  }
+  let manKat=$('manKategorie').value;
+  // GWG/WG 1000-€-Grenze automatisch anwenden
+  if(manKat==='GWG < €1000' && netto>1000){ manKat='WG > €1000'; addLog('warn','⚖',`Netto ${fmt(netto)} € > 1000 → <b>WG > €1000</b>`); }
+  else if(manKat==='WG > €1000' && netto<=1000){ manKat='GWG < €1000'; addLog('warn','⚖',`Netto ${fmt(netto)} € ≤ 1000 → <b>GWG < €1000</b>`); }
+  const beleg={
+    id:uid(),
+    datum,
+    uhrzeit: $('manUhrzeit').value||null,
+    aussteller: $('manAussteller').value||$('manTyp').value,
+    beschreibung: $('manBeschreibung').value||$('manTyp').value,
+    netto, brutto, waehrung:'EUR',
+    steuern,
+    kategorie: manKat,
+    flag:null, image:null,
+    manuell:true,
+    erfasst:new Date().toISOString()
+  };
+  // Dublettenprüfung auch für manuelle Belege
+  const dup=findDuplicate(beleg, [...allBelege]);
+  if(dup){
+    beleg.dupOf=dup.id; beleg.dupAussteller=dup.aussteller;
+    duplicates.push(beleg);
+    addLog('warn','🔁',`<b>DOPPELT</b> (manuell): ${beleg.aussteller} · ${fmt(beleg.brutto)} €`);
+  } else {
+    allBelege.push(beleg);
+    addLog('ok','✏️',`Manuell erfasst: <b>${beleg.aussteller}</b> · ${fmt(beleg.brutto)} € (${satz}%)`);
+  }
+  saveBelege();
+  closeManual();
+  // Auto-Excel
+  addLog('acc','📊','Aktualisiere Excel…');
+  setTimeout(()=>{ const years=doExportSilent(); addLog('ok','✅',`Excel: Gesamt + ${years.join(', ')}`); },200);
+  renderAll();
+}
+
+// Bewirtung-Erkennung: nur echte Lokale (Trinkgeld/Service sinnvoll), NICHT Supermärkte
+function istBewirtung(b){
+  const a=(b.aussteller||'').toLowerCase();
+  // Supermärkte / Handel ausschließen (dort kein Trinkgeld)
+  const istHandel=/billa|spar|hofer|lidl|penny|merkur|mpreis|denns|bipa|drogerie|radatz|metro|interspar|supermarkt|tankstelle|eni |omv|shell|aral|jet |starkl|baumarkt|hornbach|obi|bauhaus|elektro|saturn|media\s?markt/.test(a);
+  if(istHandel) return false;
+  // Echte Bewirtung erkennen
+  return /restaurant|gasthaus|gasthof|cafe|café|kaffee|\bbar\b|beisl|wirt|pizzeria|trattoria|bistro|heuriger|lokal|stüberl|stuberl|tavern|grill|imbiss|wirtshaus|kantine|mensa|brauerei|schank/.test(a);
+}
+
+let tipResolve=null;
+function askTrinkgeld(beleg){
+  return new Promise(resolve=>{
+    tipResolve=resolve;
+    $('tipReceipt').innerHTML=`<b>${beleg.aussteller||'Bewirtung'}</b> · ${fmtD(beleg.datum)}${beleg.uhrzeit?' '+beleg.uhrzeit+' Uhr':''}<br>Rechnungsbetrag: <b>${fmt(beleg.brutto)} ${beleg.waehrung}</b>`;
+    $('tipInput').value='';
+    // Quick-Buttons: 5%, 10%, 15% des Brutto + runden
+    const b=parseFloat(beleg.brutto||0);
+    const q=[ {l:'5%',v:r(b*0.05)}, {l:'10%',v:r(b*0.10)}, {l:'15%',v:r(b*0.15)} ];
+    $('tipQuick').innerHTML=q.map(x=>`<button onclick="setTipQuick(${x.v})">${x.l}<br><span style="font-weight:400;color:var(--mut)">${fmt(x.v)} €</span></button>`).join('');
+    $('tipOverlay').classList.add('on');
+    setTimeout(()=>$('tipInput').focus(),300);
+  });
+}
+function setTipQuick(v){ $('tipInput').value=String(v).replace('.',','); }
+function confirmTip(){
+  const raw=($('tipInput').value||'').replace(',','.').trim();
+  const val=parseFloat(raw)||0;
+  $('tipOverlay').classList.remove('on');
+  if(tipResolve){ tipResolve(val>0?val:null); tipResolve=null; }
+}
+function skipTip(){
+  $('tipOverlay').classList.remove('on');
+  if(tipResolve){ tipResolve(null); tipResolve=null; }
+}
+
+// Trinkgeld als 0%-Position zum Beleg hinzufügen
+function addTrinkgeldPosition(beleg, betrag){
+  if(!betrag||betrag<=0) return beleg;
+  const tg=r(betrag);
+  beleg.steuern=[...(beleg.steuern||[]), {satz:0, betrag:0, netto:tg, brutto:tg, position:'Trinkgeld / Service'}];
+  beleg.trinkgeld=tg;
+  beleg.netto=r(parseFloat(beleg.netto||0)+tg);
+  beleg.brutto=r(parseFloat(beleg.brutto||0)+tg);
+  beleg.beschreibung=(beleg.beschreibung||'')+ (beleg.beschreibung?' + ':'') + `Trinkgeld/Service ${fmt(tg)} €`;
+  return beleg;
+}
+
+async function startScan() {
+  if(!pendingImages.length) return;
+  $('scanBtn').disabled=true;
+  $('parsingBox').classList.add('on');
+  $('scanBar').style.display='none';
+
+  const newBelege=[];
+  for(let i=0;i<pendingImages.length;i++) {
+    const img=pendingImages[i];
+    const ts=$('ts_'+img.id);
+    if(ts) ts.className='ts ts-s';
+    $('parseProgress').textContent=`Beleg ${i+1} von ${pendingImages.length}…`;
+    addLog('acc','📷',`Scanne Beleg #${i+1}…`);
+    try {
+      const parsed=await scanOne(img);
+      if(ts) ts.className='ts ts-ok';
+      addLog('ok','✅',`<b>${parsed.aussteller||'?'}</b> · ${fmt(parsed.brutto)} €`);
+
+      addLog('acc','🏷',`Kategorisiere Beleg #${i+1}…`);
+      let kat=await categorizeOne(parsed);
+      // GWG/WG: 1000-€-Netto-Grenze automatisch korrigieren
+      const nettoVal=parseFloat(parsed.netto||0);
+      if((kat==='GWG < €1000'||kat==='WG > €1000') && nettoVal>0){
+        if(nettoVal>1000 && kat==='GWG < €1000'){ kat='WG > €1000'; addLog('warn','⚖',`Netto ${fmt(nettoVal)} € > 1000 → Kategorie auf <b>WG > €1000</b> korrigiert`); }
+        else if(nettoVal<=1000 && kat==='WG > €1000'){ kat='GWG < €1000'; addLog('warn','⚖',`Netto ${fmt(nettoVal)} € ≤ 1000 → Kategorie auf <b>GWG < €1000</b> korrigiert`); }
+      }
+      addLog('ok','✅',`→ <b>${kat}</b>`);
+
+      const txB=r((parsed.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
+      const calc=r(parseFloat(parsed.netto||0)+txB);
+      const ok=Math.abs(calc-parseFloat(parsed.brutto||0))<0.02;
+      addLog(ok?'ok':'warn',ok?'✓':'⚠',ok?`Prüfung OK`:`Abweichung: ${r(Math.abs(calc-parsed.brutto)).toFixed(2)} €`);
+
+      let candidate={...parsed,id:uid(),image:img.src,kategorie:kat,flag:null,waehrung:parsed.waehrung||'EUR',erfasst:new Date().toISOString(),
+        excelDatei: currentExcel||('Reisekosten_'+(new Date(parsed.datum||Date.now()).getFullYear())),
+        origSize: img.origSize||null, bildSize: img.newSize||null, cloudStatus:'lokal'};
+      if(img.origSize && img.newSize){
+        addLog('ok','🗜',`Bild komprimiert: ${fmtKB(img.origSize)} → <b>${fmtKB(img.newSize)}</b>`);
+      }
+
+      // ── Trinkgeld / Service bei Bewirtung ──
+      if(istBewirtung(candidate)){
+        if(parsed.trinkgeld && parseFloat(parsed.trinkgeld)>0){
+          // Auf dem Beleg bereits ausgewiesen — als 0% Position übernehmen
+          const tg=r(parseFloat(parsed.trinkgeld));
+          candidate.steuern=[...(candidate.steuern||[]), {satz:0,betrag:0,netto:tg,brutto:tg,position:'Trinkgeld / Service'}];
+          candidate.trinkgeld=tg;
+          addLog('ok','💶',`Trinkgeld/Service vom Beleg: <b>${fmt(tg)} €</b> (0% Steuer)`);
+        } else {
+          // Nicht auf dem Beleg — manuell abfragen
+          $('parsingBox').classList.remove('on');
+          addLog('acc','💶',`Bewirtung erkannt — Trinkgeld/Service-Abfrage…`);
+          const tg=await askTrinkgeld(candidate);
+          $('parsingBox').classList.add('on');
+          if(tg && tg>0){
+            candidate=addTrinkgeldPosition(candidate, tg);
+            addLog('ok','💶',`Trinkgeld/Service manuell: <b>${fmt(tg)} €</b> (0% Steuer)`);
+          } else {
+            addLog('info','💶',`Kein Trinkgeld erfasst`);
+          }
+        }
+      }
+
+      // Dublettenprüfung gegen bestehende + neu erfasste
+      const dup = findDuplicate(candidate, [...allBelege, ...newBelege]);
+      if(dup){
+        candidate.dupOf = dup.id;
+        candidate.dupAussteller = dup.aussteller;
+        duplicates.push(candidate);
+        addLog('warn','🔁',`<b>DOPPELTER BELEG</b> — bereits erfasst: ${dup.aussteller} · ${fmtD(dup.datum)}${dup.uhrzeit?' '+dup.uhrzeit:''} · ${fmt(dup.brutto)} €`);
+      } else {
+        newBelege.push(candidate);
+      }
+    } catch(e) {
+      if(ts) ts.className='ts ts-f';
+      addLog('warn','❌',`Fehler: ${e.message}`);
+    }
+  }
+
+  // Merge & save
+  allBelege=[...allBelege,...newBelege];
+  saveBelege();
+  const dupCount = duplicates.length;
+  addLog('ok','💾',`<b>${newBelege.length} neue Belege gespeichert</b> — Gesamt: ${allBelege.length}`);
+  if(dupCount) addLog('warn','🔁',`<b>${dupCount} Dublette${dupCount!==1?'n':''}</b> im Register "Doppelte Belege"`);
+
+  // UI zurücksetzen + Auswertung SOFORT anzeigen
+  $('parsingBox').classList.remove('on');
+  $('parseProgress').textContent='';
+  pendingImages=[]; thumbStatus={};
+  $('thumbs').innerHTML='';
+  $('scanBar').style.display='none';
+  $('scanBtn').disabled=false;
+
+  // Auswertung neu rendern (immer)
+  try { renderAll(); } catch(err){ addLog('warn','⚠','Render-Fehler: '+err.message); }
+
+  // Auto-Excel erzeugen
+  addLog('acc','📊','Erstelle Excel-Dateien…');
+  setTimeout(async ()=>{
+    try {
+      const years=doExportSilent();
+      addLog('ok','✅',`Excel exportiert: Gesamt + ${years.join(', ')}`);
+      $('expNote').textContent=`Zuletzt: ${new Date().toLocaleTimeString('de-AT')} · ${years.join(', ')}`;
+    } catch(err){ addLog('warn','⚠','Excel-Fehler: '+err.message); }
+
+    // ☁️ Cloud-Upload der komprimierten Belegbilder + Excel
+    if(driveReady()){
+      addLog('acc','☁️','Lade Belege & Excel zu Google Drive…');
+      try {
+        for(const b of newBelege){
+          if(b.image){
+            const fn=`Beleg_${b.datum||'?'}_${(b.aussteller||'').replace(/[^a-zA-Z0-9]/g,'').slice(0,20)}_${b.id}.jpg`;
+            const id=await uploadToDrive(fn,'image/jpeg',b.image,driveFolders.belege);
+            if(id){ b.cloudStatus='hochgeladen'; b.cloudId=id; }
+          }
+        }
+        // Excel hochladen (aktuell + Backup) in Auswertung-Ordner
+        const base=currentExcel||'Reisekosten_Gesamt';
+        const wb=buildWb(allBelege); appendDupSheet(wb);
+        const xlsB64=XLSX.write(wb,{bookType:'xlsx',type:'base64'});
+        await uploadToDrive(`${base}_AKTUELL.xlsx`,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xlsB64,driveFolders.auswertung);
+        const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
+        await uploadToDrive(`${base}_BACKUP_${ts}.xlsx`,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xlsB64,driveFolders.auswertung);
+        saveBelege();
+        addLog('ok','☁️',`<b>${newBelege.length} Bilder + Excel</b> zu Drive hochgeladen (Reisekosten/Belege, Reisekosten/Auswertung)`);
+      } catch(err){ addLog('warn','☁️','Drive-Upload-Fehler: '+err.message); }
+    } else if(GOOGLE_CLIENT_ID){
+      addLog('info','☁️','Nicht mit Drive verbunden — Bilder nur lokal gespeichert');
+    }
+  },200);
+}
+
+// ─── SUCHE ────────────────────────────────────────────────────────────────────
+function belegSearchText(b){
+  // Alle durchsuchbaren Felder zu einem Text zusammenfassen
+  const parts=[
+    b.aussteller||'', b.beschreibung||'', b.kategorie||'',
+    b.datum?fmtD(b.datum):'', b.datum||'', b.uhrzeit||'',
+    fmt(b.brutto), fmt(b.netto),
+    String(b.brutto||''), String(b.netto||''),
+    b.manuell?'manuell':'',
+    (b.steuern||[]).map(t=>`${t.satz}% ${t.position||''} ${fmt(t.betrag)} ${fmt(t.netto||0)}`).join(' '),
+  ];
+  return parts.join(' ').toLowerCase();
+}
+function matchesSearch(b, q){
+  if(!q) return true;
+  const text=belegSearchText(b);
+  // alle Begriffe (durch Leerzeichen getrennt) müssen vorkommen (UND-Verknüpfung)
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(term=>text.includes(term));
+}
+function highlight(str, q){
+  if(!q||!str) return escapeHtml(str||'');
+  let out=escapeHtml(String(str));
+  q.toLowerCase().split(/\s+/).filter(Boolean).forEach(term=>{
+    const esc=term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    out=out.replace(new RegExp('('+esc+')','gi'),'<span class="hl">$1</span>');
+  });
+  return out;
+}
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function onSearch(){
+  searchQuery=$('searchInput').value.trim();
+  $('searchClear').style.display=searchQuery?'':'none';
+  renderAll();
+}
+function clearSearch(){
+  searchQuery=''; $('searchInput').value=''; $('searchClear').style.display='none'; renderAll();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function getFiltered() {
+  let list = yearFilter==='all'?allBelege:allBelege.filter(b=>year(b.datum)===Number(yearFilter));
+  if(searchQuery) list = list.filter(b=>matchesSearch(b, searchQuery));
+  return list;
+}
+
+function renderAll() {
+  // Register-Tab Sichtbarkeit
+  const dupBtn=$('regDup');
+  if(duplicates.length){ dupBtn.style.display=''; $('dupCount').textContent=duplicates.length; }
+  else { dupBtn.style.display='none'; if(register==='dup'){register='main';$('regMain').classList.add('on');dupBtn.classList.remove('on');} }
+
+  if(register==='dup'){ renderDuplicates(); return; }
+
+  // Sektionen wieder einblenden (falls von Dup-Ansicht)
+  ['sumGrid','kfzBox','katSection'].forEach(()=>{});
+  $('kfzBox').style.display='';
+
+  const filtered=getFiltered().slice().sort((a,b)=>(a.datum||'').localeCompare(b.datum||''));
+  const totB=r(filtered.reduce((s,b)=>s+parseFloat(b.brutto||0),0));
+  const totN=r(filtered.reduce((s,b)=>s+parseFloat(b.netto||0),0));
+  const totS=r(totB-totN);
+
+  $('hdrStat').textContent=`${allBelege.length} Belege · ${fmt(r(allBelege.reduce((s,b)=>s+parseFloat(b.brutto||0),0)))} € gesamt`;
+  $('sumBrutto').textContent=fmt(totB)+' €';
+  $('sumNetto').textContent=fmt(totN)+' €';
+  $('sumSteuer').textContent=fmt(totS)+' €';
+  $('sumCount').textContent=filtered.length;
+  $('resultSection').style.display='';
+
+  // Suchinfo
+  if(searchQuery){
+    $('searchInfo').style.display='';
+    $('searchInfo').innerHTML=filtered.length
+      ? `🔍 <b>${filtered.length}</b> Treffer für „${escapeHtml(searchQuery)}" · Summe Brutto: <b>${fmt(totB)} €</b>`
+      : `🔍 Keine Treffer für „${escapeHtml(searchQuery)}"`;
+    $('rcTitle').textContent=`Suchergebnisse (${filtered.length})`;
+  } else {
+    $('searchInfo').style.display='none';
+    $('rcTitle').textContent=`Belege ${yearFilter!=='all'?yearFilter:'– alle'} (${filtered.length})`;
+  }
+
+  // Period
+  const dates=filtered.map(b=>b.datum?new Date(b.datum):null).filter(Boolean).sort((a,c)=>a-c);
+  if(dates.length){
+    $('periodBar').style.display='';
+    const dS=dates[0].toLocaleDateString('de-AT'),dE=dates[dates.length-1].toLocaleDateString('de-AT');
+    $('periodBar').innerHTML=`Zeitraum: <b>${dS}${dS!==dE?' – '+dE:''}</b>`;
+  } else $('periodBar').style.display='none';
+
+  // Year tabs
+  const years=[...new Set(allBelege.map(b=>year(b.datum)).filter(Boolean))].sort();
+  $('yearTabs').innerHTML=years.length>1?
+    `<button class="ytab ${yearFilter==='all'?'on':''}" onclick="setYear('all')">Alle</button>`+
+    years.map(y=>`<button class="ytab ${yearFilter===String(y)?'on':''}" onclick="setYear('${y}')">${y}</button>`).join(''):'';
+
+  // Category map
+  const catMap={};
+  filtered.forEach(b=>{
+    const k=b.kategorie||'Sonstiges';
+    if(!catMap[k]) catMap[k]={netto:0,steuer:0,brutto:0,count:0,steuern:{}};
+    catMap[k].netto+=parseFloat(b.netto||0);
+    catMap[k].brutto+=parseFloat(b.brutto||0);
+    (b.steuern||[]).forEach(t=>{catMap[k].steuern[t.satz]=(catMap[k].steuern[t.satz]||0)+parseFloat(t.betrag||0);});
+    catMap[k].steuer=r(Object.values(catMap[k].steuern).reduce((a,c)=>a+c,0));
+    catMap[k].count++;
+  });
+
+  // KFZ Box
+  const kfzData=KFZ_CATS.map(kat=>{
+    const recs=filtered.filter(b=>b.kategorie===kat);
+    const kN=r(recs.reduce((s,b)=>s+parseFloat(b.netto||0),0));
+    const kB=r(recs.reduce((s,b)=>s+parseFloat(b.brutto||0),0));
+    const txAgg={};
+    recs.forEach(b=>(b.steuern||[]).forEach(t=>{txAgg[t.satz]=(txAgg[t.satz]||0)+parseFloat(t.betrag||0);}));
+    return {kat,count:recs.length,netto:kN,brutto:kB,steuer:r(kB-kN),steuern:txAgg};
+  }).filter(d=>d.count>0);
+
+  if(kfzData.length){
+    $('kfzBox').style.display='';
+    $('kfzGrid').innerHTML=kfzData.map(d=>`
+      <div class="kfz-card">
+        <div class="kfz-name">${KAT_META[d.kat]?.icon||''} ${d.kat}</div>
+        <div class="kfz-row"><span class="kfz-lbl">Belege</span><span class="kfz-val">${d.count}</span></div>
+        <div class="kfz-row"><span class="kfz-lbl">Netto</span><span class="kfz-val">${fmt(d.netto)} €</span></div>
+        <div class="kfz-row"><span class="kfz-lbl">Steuer</span><span class="kfz-val">${fmt(d.steuer)} €</span></div>
+        <div class="kfz-row" style="font-weight:700"><span class="kfz-lbl">Brutto</span><span class="kfz-val" style="color:var(--acc)">${fmt(d.brutto)} €</span></div>
+        ${Object.keys(d.steuern).length?`<div class="kfz-tax">${Object.entries(d.steuern).sort((a,b)=>b[0]-a[0]).map(([s,v])=>`<div style="display:flex;justify-content:space-between;padding:1px 0"><span>${s}% MwSt</span><span>${fmt(v)} €</span></div>`).join('')}</div>`:''}
+      </div>`).join('');
+  } else $('kfzBox').style.display='none';
+
+  // Kat cards
+  $('katGrid').innerHTML=KATEGORIEN.filter(k=>catMap[k]).map(kat=>{
+    const d=catMap[kat]; const m=KAT_META[kat]||{icon:'📎',color:'#aaa'};
+    const isKfz=KFZ_CATS.includes(kat);
+    return `<div class="kat-card ${isKfz?'kfz':''}" style="${isKfz?'border-left-color:'+m.color:''}">
+      <div class="kat-head"><span class="kat-icon">${m.icon}</span><span class="kat-name" style="color:${m.color}">${kat}</span></div>
+      <div class="kat-row"><span class="kat-lbl">Belege</span><span class="kat-val">${d.count}</span></div>
+      <div class="kat-row"><span class="kat-lbl">Netto</span><span class="kat-val">${fmt(d.netto)} €</span></div>
+      <div class="kat-row"><span class="kat-lbl">Steuer</span><span class="kat-val">${fmt(d.steuer)} €</span></div>
+      <div class="kat-row kat-tot"><span>Brutto</span><span class="kat-val" style="color:${m.color}">${fmt(d.brutto)} €</span></div>
+      ${isKfz&&Object.keys(d.steuern).length?`<div class="kat-tax">${Object.entries(d.steuern).sort((a,b)=>b[0]-a[0]).map(([s,v])=>`<div style="display:flex;justify-content:space-between"><span>${s}% MwSt</span><span>${fmt(v)} €</span></div>`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+
+  // Receipts
+  if(searchQuery && filtered.length===0){
+    $('rcList').innerHTML='<div class="no-results">🔍 Keine Belege gefunden.<br>Versuche andere Suchbegriffe (z.B. Aussteller, Jahr, Betrag oder Kategorie).</div>';
+  } else
+  $('rcList').innerHTML=filtered.slice().reverse().map(b=>{
+    const txB=r((b.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
+    const ok=Math.abs(r(parseFloat(b.netto||0)+txB)-parseFloat(b.brutto||0))<0.02;
+    const m=KAT_META[b.kategorie||'Sonstiges']||{icon:'📎',color:'#aaa'};
+    const isKfz=KFZ_CATS.includes(b.kategorie);
+    return `<div class="rc" style="${isKfz?'border-left:3px solid rgba(232,160,64,.5)':''}">
+      <div class="rc-hd" style="cursor:pointer" onclick="openDetail(${b.id})">
+        <div>
+          <div class="rc-n">${highlight(b.aussteller||'Unbekannt', searchQuery)}</div>
+          <div class="rc-d">${highlight(fmtD(b.datum)+(b.uhrzeit?' · '+b.uhrzeit+' Uhr':'')+(b.beschreibung?' · '+b.beschreibung:''), searchQuery)}</div>
+        </div>
+        <div class="rc-bdgs">
+          <span class="bdg ${ok?'b-ok':'b-w'}">${ok?'✓ OK':'⚠'}</span>
+          <span class="bdg b-f">${m.icon} ${b.kategorie||'?'}</span>
+          ${b.manuell?`<span class="bdg" style="background:rgba(100,150,255,.2);color:#80aaff">✏️ Manuell</span>`:''}
+          ${b.flag?`<span class="bdg b-w">🚩</span>`:''}
+        </div>
+      </div>
+      ${b.flag?`<div class="flg">🚩 ${b.flag}</div>`:''}
+      <div class="rc-bd">
+        <div class="ri"><span class="rl">Netto</span><span class="rv">${fmt(b.netto)} ${b.waehrung}</span></div>
+        ${(b.steuern||[]).map(t=>(t.position&&t.satz===0)
+          ? `<div class="ri"><span class="rl"><span class="txb" style="background:rgba(76,175,125,.2);color:var(--ok)">0%</span> ${t.position}</span><span class="rv">${fmt(t.netto||t.brutto||0)} ${b.waehrung}</span></div>`
+          : `<div class="ri"><span class="rl"><span class="txb">${t.satz}%</span> Steuer</span><span class="rv">+ ${fmt(t.betrag)} ${b.waehrung}</span></div>`).join('')}
+        <div class="ri ri-t"><span>Brutto</span><span class="rv">${fmt(b.brutto)} ${b.waehrung}</span></div>
+      </div>
+      ${b.image?`<div class="rc-img"><img src="${b.image}" onclick="openLb('${b.image}')"></div>`:''}
+      <div class="rc-ft">
+        <button class="btn btn-o btn-sm" onclick="openDetail(${b.id})">🔍 Details</button>
+        <button class="btn btn-d btn-sm" onclick="deleteBeleg(${b.id})">🗑 Löschen</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+function renderDuplicates() {
+  const dups=duplicates.slice().sort((a,b)=>(a.datum||'').localeCompare(b.datum||''));
+  const totB=r(dups.reduce((s,b)=>s+parseFloat(b.brutto||0),0));
+  const totN=r(dups.reduce((s,b)=>s+parseFloat(b.netto||0),0));
+
+  $('sumBrutto').textContent=fmt(totB)+' €';
+  $('sumNetto').textContent=fmt(totN)+' €';
+  $('sumSteuer').textContent=fmt(r(totB-totN))+' €';
+  $('sumCount').textContent=dups.length;
+  $('resultSection').style.display='';
+  $('rcTitle').textContent=`Doppelte Belege (${dups.length})`;
+
+  // Hide period/year/kfz/kat in dup view, show info
+  $('periodBar').style.display='none';
+  $('yearTabs').innerHTML='';
+  $('kfzBox').style.display='none';
+  $('katGrid').innerHTML='<div class="dup-info">🔁 <b>Doppelt erfasste Belege</b><br>Diese Belege wurden als Dubletten erkannt (gleicher Aussteller, Datum, Uhrzeit &amp; Betrag) und sind <b>NICHT</b> in der Hauptauswertung enthalten. Du kannst sie hier prüfen und ggf. endgültig löschen.</div>';
+
+  $('rcList').innerHTML=dups.slice().reverse().map(b=>{
+    const m=KAT_META[b.kategorie||'Sonstiges']||{icon:'📎',color:'#aaa'};
+    return `<div class="rc dup">
+      <div class="rc-hd">
+        <div>
+          <div class="rc-n">${b.aussteller||'Unbekannt'}</div>
+          <div class="rc-d">${fmtD(b.datum)}${b.uhrzeit?' · '+b.uhrzeit+' Uhr':''}${b.beschreibung?' · '+b.beschreibung:''}</div>
+          <div class="dup-link">↳ Dublette zu bereits erfasstem Beleg</div>
+        </div>
+        <div class="rc-bdgs">
+          <span class="bdg b-w">🔁 Doppelt</span>
+          <span class="bdg b-f">${m.icon} ${b.kategorie||'?'}</span>
+        </div>
+      </div>
+      <div class="rc-bd">
+        <div class="ri"><span class="rl">Netto</span><span class="rv">${fmt(b.netto)} ${b.waehrung}</span></div>
+        ${(b.steuern||[]).map(t=>(t.position&&t.satz===0)
+          ? `<div class="ri"><span class="rl"><span class="txb" style="background:rgba(76,175,125,.2);color:var(--ok)">0%</span> ${t.position}</span><span class="rv">${fmt(t.netto||t.brutto||0)} ${b.waehrung}</span></div>`
+          : `<div class="ri"><span class="rl"><span class="txb">${t.satz}%</span> Steuer</span><span class="rv">+ ${fmt(t.betrag)} ${b.waehrung}</span></div>`).join('')}
+        <div class="ri ri-t"><span>Brutto</span><span class="rv">${fmt(b.brutto)} ${b.waehrung}</span></div>
+      </div>
+      ${b.image?`<div class="rc-img"><img src="${b.image}" onclick="openLb('${b.image}')"></div>`:''}
+      <div class="rc-ft">
+        <button class="btn btn-d btn-sm" onclick="deleteDuplicate(${b.id})">🗑 Endgültig löschen</button>
+        <button class="btn btn-o btn-sm" onclick="restoreDuplicate(${b.id})">↩ Doch übernehmen</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteDuplicate(id){
+  if(!confirm('Dublette endgültig löschen?')) return;
+  duplicates=duplicates.filter(b=>b.id!==id);
+  saveBelege(); renderAll();
+  addLog('warn','🗑','Dublette gelöscht');
+}
+function restoreDuplicate(id){
+  const b=duplicates.find(x=>x.id===id); if(!b) return;
+  if(!confirm('Diesen Beleg doch in die Hauptauswertung übernehmen?')) return;
+  delete b.dupOf; delete b.dupAussteller;
+  allBelege.push(b);
+  duplicates=duplicates.filter(x=>x.id!==id);
+  saveBelege(); 
+  addLog('ok','↩',`Beleg übernommen: ${b.aussteller} · ${fmt(b.brutto)} €`);
+  setRegister('main');
+}
+
+function openDetail(id){
+  const b=[...allBelege,...duplicates].find(x=>x.id===id);
+  if(!b) return;
+  const m=KAT_META[b.kategorie||'Sonstiges']||{icon:'📎',color:'#aaa'};
+  const txB=r((b.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
+  const calc=r(parseFloat(b.netto||0)+txB);
+  const ok=Math.abs(calc-parseFloat(b.brutto||0))<0.02;
+  const isDup=duplicates.some(x=>x.id===id);
+
+  const taxRows=(b.steuern||[]).map(t=>{
+    if(t.position&&t.satz===0){
+      return `<div class="det-tax-row"><span>${t.position} (0%)</span><span>${fmt(t.netto||t.brutto||0)} €</span></div>`;
+    }
+    const n=t.satz>0?r(parseFloat(t.betrag||0)/t.satz*100):0;
+    return `<div class="det-tax-row"><span>${t.satz}% MwSt (Netto ${fmt(n)} €)</span><span>${fmt(t.betrag)} €</span></div>`;
+  }).join('');
+
+  $('detModal').innerHTML=`
+    <div class="det-head">
+      <div>
+        <h3>${highlight(b.aussteller||'Unbekannt', searchQuery)}</h3>
+        <div class="det-sub">${fmtD(b.datum)}${b.uhrzeit?' · '+b.uhrzeit+' Uhr':''}</div>
+        <div class="det-badges">
+          <span class="bdg b-f" style="background:${m.color}22;color:${m.color}">${m.icon} ${b.kategorie||'?'}</span>
+          ${b.manuell?'<span class="bdg" style="background:rgba(100,150,255,.2);color:#80aaff">✏️ Manuell</span>':''}
+          ${isDup?'<span class="bdg b-w">🔁 Doppelt</span>':''}
+          <span class="bdg ${ok?'b-ok':'b-w'}">${ok?'✓ Geprüft':'⚠ Abweichung'}</span>
+        </div>
+      </div>
+      <button class="det-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="det-body">
+      <div class="det-section">
+        <div class="det-section-ttl">Belegdaten</div>
+        <div class="det-field"><span class="dl">Aussteller</span><span class="dv">${escapeHtml(b.aussteller||'–')}</span></div>
+        <div class="det-field"><span class="dl">Datum</span><span class="dv">${fmtD(b.datum)}</span></div>
+        <div class="det-field"><span class="dl">Uhrzeit</span><span class="dv">${b.uhrzeit||'–'}</span></div>
+        <div class="det-field"><span class="dl">Kategorie</span><span class="dv">${m.icon} ${b.kategorie||'–'}</span></div>
+        <div class="det-field"><span class="dl">Beschreibung</span><span class="dv">${escapeHtml(b.beschreibung||'–')}</span></div>
+        <div class="det-field"><span class="dl">Erfassung</span><span class="dv">${b.manuell?'Manuell':'KI-Scan'}</span></div>
+        <div class="det-field"><span class="dl">Excel-Abrechnung</span><span class="dv">${escapeHtml(b.excelDatei||'–')}</span></div>
+        <div class="det-field"><span class="dl">Cloud-Status</span><span class="dv">${b.cloudStatus==='hochgeladen'?'☁️ In Drive':'💾 Lokal'}</span></div>
+        ${b.origSize&&b.bildSize?`<div class="det-field"><span class="dl">Bildgröße</span><span class="dv">${fmtKB(b.origSize)} → ${fmtKB(b.bildSize)}</span></div>`:''}
+      </div>
+      <div class="det-section">
+        <div class="det-section-ttl">Beträge &amp; Steuersätze</div>
+        <div class="det-field"><span class="dl">Nettosumme</span><span class="dv">${fmt(b.netto)} ${b.waehrung}</span></div>
+        <div class="det-tax-table">
+          ${taxRows||'<div class="det-tax-row"><span>Keine Steuerangabe</span><span>–</span></div>'}
+          <div class="det-tax-row tot"><span>Bruttosumme</span><span>${fmt(b.brutto)} ${b.waehrung}</span></div>
+        </div>
+      </div>
+      <div class="det-section">
+        <div class="det-section-ttl">Belegprüfung</div>
+        <div class="det-check ${ok?'ok':'err'}">
+          <div class="det-check-row"><span>Netto</span><span>${fmt(b.netto)} €</span></div>
+          <div class="det-check-row"><span>+ Steuer gesamt</span><span>${fmt(txB)} €</span></div>
+          <div class="det-check-row" style="border-top:1px solid currentColor;margin-top:4px;padding-top:5px"><span>= Berechnet</span><span>${fmt(calc)} €</span></div>
+          <div class="det-check-row"><span>Beleg-Brutto</span><span>${fmt(b.brutto)} €</span></div>
+          <div class="det-check-row" style="font-weight:700"><span>${ok?'✓ Übereinstimmung':'⚠ Differenz'}</span><span>${fmt(Math.abs(calc-parseFloat(b.brutto||0)))} €</span></div>
+        </div>
+      </div>
+      ${b.image?`<div class="det-section"><div class="det-section-ttl">Belegfoto</div><img class="det-img" src="${b.image}" onclick="openLb('${b.image}')"></div>`:''}
+    </div>`;
+  $('detOverlay').classList.add('on');
+}
+function closeDetail(){ $('detOverlay').classList.remove('on'); }
+
+function setYear(y) { yearFilter=y; renderAll(); }
+function setRegister(reg){ register=reg; document.getElementById('regMain').classList.toggle('on',reg==='main'); document.getElementById('regDup').classList.toggle('on',reg==='dup'); renderAll(); }
+function openLb(src) { $('lbImg').src=src; $('lb').classList.add('on'); }
+function deleteBeleg(id) {
+  if(!confirm('Beleg löschen?')) return;
+  allBelege=allBelege.filter(b=>b.id!==id);
+  saveBelege(); renderAll();
+  addLog('warn','🗑','Beleg gelöscht');
+}
+
+// ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+function buildWb(belege) {
+  const wb=XLSX.utils.book_new();
+  const sorted=[...belege].sort((a,b)=>(a.datum||'').localeCompare(b.datum||''));
+  const totB=r(belege.reduce((s,b)=>s+parseFloat(b.brutto||0),0));
+  const totN=r(belege.reduce((s,b)=>s+parseFloat(b.netto||0),0));
+  const totS=r(totB-totN);
+
+  // Sheet 1
+  const rows1=[['Nr','Datum','Uhrzeit','Aussteller','Beschreibung','Kategorie','MwSt%','Netto €','Steuer €','Brutto €','Prüfung']];
+  sorted.forEach((b,i)=>{
+    const txB=r((b.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
+    const ok=Math.abs(r(parseFloat(b.netto||0)+txB)-parseFloat(b.brutto||0))<0.02;
+    rows1.push([i+1,fmtD(b.datum),b.uhrzeit||'',b.aussteller,(b.beschreibung||'')+(b.manuell?' [manuell]':''),b.kategorie||'',
+      (b.steuern||[]).map(t=>t.satz+'%').join('+'),parseFloat(b.netto||0),txB,parseFloat(b.brutto||0),ok?'✓ OK':'⚠']);
+  });
+  rows1.push([],['','','','','','','GESAMT',totN,totS,totB,belege.length+' Belege']);
+  const ws1=XLSX.utils.aoa_to_sheet(rows1);
+  ws1['!cols']=[{wch:5},{wch:12},{wch:9},{wch:28},{wch:28},{wch:26},{wch:10},{wch:12},{wch:12},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Alle Belege');
+
+  // Sheet 2: Kategorien + KFZ
+  const catMap={};
+  belege.forEach(b=>{
+    const k=b.kategorie||'Sonstiges';
+    if(!catMap[k]) catMap[k]={netto:0,steuer:0,brutto:0,count:0,steuern:{}};
+    catMap[k].netto+=parseFloat(b.netto||0);
+    catMap[k].brutto+=parseFloat(b.brutto||0);
+    (b.steuern||[]).forEach(t=>{catMap[k].steuern[t.satz]=(catMap[k].steuern[t.satz]||0)+parseFloat(t.betrag||0);});
+    catMap[k].steuer=r(Object.values(catMap[k].steuern).reduce((a,c)=>a+c,0));
+    catMap[k].count++;
+  });
+  const rows2=[['Kategorie','Belege','Netto €','Steuer €','Brutto €','0%','10%','13%','20%','Hinweis']];
+  KATEGORIEN.forEach(k=>{
+    const d=catMap[k]; if(!d) return;
+    rows2.push([k,d.count,r(d.netto),r(d.steuer),r(d.brutto),
+      r(d.steuern[0]||0)||null,r(d.steuern[10]||0)||null,r(d.steuern[13]||0)||null,r(d.steuern[20]||0)||null,
+      KFZ_CATS.includes(k)?'⬅ KFZ separat':'']);
+  });
+  rows2.push([],['GESAMT',belege.length,totN,totS,totB]);
+  rows2.push([],['⛽🅿 KFZ EINZELNACHWEIS']);
+  KFZ_CATS.forEach(kat=>{
+    const recs=belege.filter(b=>b.kategorie===kat); if(!recs.length) return;
+    rows2.push([kat]);
+    recs.forEach(b=>{
+      const txB=r((b.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
+      rows2.push(['',fmtD(b.datum),b.aussteller,b.beschreibung,parseFloat(b.netto||0),
+        (b.steuern||[]).map(t=>`${t.satz}%→${r(t.betrag).toFixed(2)}€`).join(' | '),'',parseFloat(b.brutto||0)]);
+    });
+    const d=catMap[kat]||{};
+    rows2.push(['','','Σ',kat,r(d.netto),r(d.steuer),r(d.brutto)]);
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(rows2);
+  ws2['!cols']=[{wch:28},{wch:8},{wch:13},{wch:13},{wch:13},{wch:10},{wch:10},{wch:10},{wch:10},{wch:26}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Kategorien & KFZ-Steuer');
+
+  // Sheet 3: Steueraufschlüsselung
+  const taxAgg={}; let trinkgeldSum=0; let pauschalSum=0;
+  belege.forEach(b=>(b.steuern||[]).forEach(t=>{
+    if(t.position==='Trinkgeld / Service'){ trinkgeldSum+=parseFloat(t.netto||t.brutto||0); return; }
+    if(t.position && t.satz===0){ pauschalSum+=parseFloat(t.netto||t.brutto||0); return; }
+    if(!taxAgg[t.satz]) taxAgg[t.satz]={steuer:0,netto:0,brutto:0};
+    taxAgg[t.satz].steuer+=parseFloat(t.betrag||0);
+    if(t.satz>0){
+      taxAgg[t.satz].netto+=parseFloat(t.betrag||0)/t.satz*100;
+      taxAgg[t.satz].brutto+=parseFloat(t.betrag||0)+parseFloat(t.betrag||0)/t.satz*100;
+    } else {
+      taxAgg[t.satz].netto+=parseFloat(t.netto||t.brutto||0);
+      taxAgg[t.satz].brutto+=parseFloat(t.brutto||t.netto||0);
+    }
+  }));
+  const rows3=[['Nr','Steuersatz','Netto €','Steuer €','Brutto €','Anteil']];
+  Object.entries(taxAgg).sort((a,b)=>a[0]-b[0]).forEach(([s,ag],i)=>{
+    rows3.push([i+1,s>0?s+'% MwSt':'0% (steuerfrei)',r(ag.netto),r(ag.steuer),r(ag.brutto),totB?r(ag.brutto/totB*100)+'%':'0%']);
+  });
+  if(pauschalSum>0){
+    rows3.push(['','Pauschalen steuerfrei (0%)',r(pauschalSum),0,r(pauschalSum),totB?r(pauschalSum/totB*100)+'%':'0%']);
+  }
+  if(trinkgeldSum>0){
+    rows3.push(['','Trinkgeld / Service (0%)',r(trinkgeldSum),0,r(trinkgeldSum),totB?r(trinkgeldSum/totB*100)+'%':'0%']);
+  }
+  rows3.push([],['','GESAMT',totN,totS,totB,'100%']);
+  const ws3=XLSX.utils.aoa_to_sheet(rows3);
+  ws3['!cols']=[{wch:6},{wch:26},{wch:14},{wch:14},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws3,'Steueraufschlüsselung');
+
+  // Sheet 4: Übersicht + Prüfung
+  const rows4=[['Nr','Datum','Uhrzeit','Aussteller','Kategorie','Netto €','Steuer €','Brutto €','Prüfung']];
+  sorted.forEach((b,i)=>{
+    const txB=r((b.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
+    const ok=Math.abs(r(parseFloat(b.netto||0)+txB)-parseFloat(b.brutto||0))<0.02;
+    rows4.push([i+1,fmtD(b.datum),b.uhrzeit||'',b.aussteller,b.kategorie||'',parseFloat(b.netto||0),txB,parseFloat(b.brutto||0),ok?'✓ OK':'⚠']);
+  });
+  rows4.push([],['','','','GESAMT',totN,totS,totB]);
+  rows4.push([],[' BELEGPRÜFUNG — Netto + Steuer = Brutto']);
+  rows4.push(['','Aussteller','Netto','Steuer','Brutto ber.','Beleg Brutto','Differenz','Status']);
+  sorted.forEach(b=>{
+    const txB=r((b.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
+    const berech=r(parseFloat(b.netto||0)+txB);
+    const diff=r(berech-parseFloat(b.brutto||0));
+    rows4.push(['',b.aussteller.split(',')[0],parseFloat(b.netto||0),txB,berech,parseFloat(b.brutto||0),Math.abs(diff)<0.02?0:diff,Math.abs(diff)<0.02?'✓ OK':'⚠ Abweichung']);
+  });
+  const ws4=XLSX.utils.aoa_to_sheet(rows4);
+  ws4['!cols']=[{wch:5},{wch:13},{wch:9},{wch:28},{wch:26},{wch:12},{wch:12},{wch:12},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws4,'Übersicht & Prüfung');
+  return wb;
+}
+
+function appendDupSheet(wb){
+  if(!duplicates.length) return;
+  const rows=[['Nr','Datum','Uhrzeit','Aussteller','Beschreibung','Kategorie','Netto €','Steuer €','Brutto €','Status']];
+  duplicates.slice().sort((a,b)=>(a.datum||'').localeCompare(b.datum||'')).forEach((b,i)=>{
+    const txB=r((b.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
+    rows.push([i+1,fmtD(b.datum),b.uhrzeit||'',b.aussteller,b.beschreibung,b.kategorie||'',
+      parseFloat(b.netto||0),txB,parseFloat(b.brutto||0),'🔁 DOPPELT — nicht in Auswertung']);
+  });
+  const dN=r(duplicates.reduce((s,b)=>s+parseFloat(b.netto||0),0));
+  const dB=r(duplicates.reduce((s,b)=>s+parseFloat(b.brutto||0),0));
+  rows.push([],['','','','','','GESAMT (Dubletten)',dN,r(dB-dN),dB,duplicates.length+' doppelte Belege']);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:5},{wch:12},{wch:9},{wch:28},{wch:28},{wch:24},{wch:12},{wch:12},{wch:12},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws,'🔁 Doppelte Belege');
+}
+
+// ── Export-Auswahl-Modal ──
+let expSelection = new Set();
+function openExportModal(){
+  const years=[...new Set(allBelege.map(b=>year(b.datum)).filter(Boolean))].sort();
+  expSelection = new Set(['all', ...years.map(String)]);  // default: alles ausgewählt
+  const opts=[];
+  // Gesamt-Option
+  const totalCount=allBelege.length;
+  const totalBrutto=fmt(r(allBelege.reduce((s,b)=>s+parseFloat(b.brutto||0),0)));
+  opts.push(`
+    <div class="exp-opt sel" data-key="all" onclick="toggleExpOpt('all')">
+      <div class="exp-opt-check">✓</div>
+      <div class="exp-opt-info">
+        <div class="exp-opt-title">📊 Gesamt-Auswertung (alle Jahre)</div>
+        <div class="exp-opt-sub">${totalCount} Belege · ${totalBrutto} € · inkl. Dubletten-Blatt</div>
+      </div>
+    </div>`);
+  // Pro Jahr
+  years.forEach(y=>{
+    const yB=allBelege.filter(b=>year(b.datum)===y);
+    const yBrutto=fmt(r(yB.reduce((s,b)=>s+parseFloat(b.brutto||0),0)));
+    opts.push(`
+      <div class="exp-opt sel" data-key="${y}" onclick="toggleExpOpt('${y}')">
+        <div class="exp-opt-check">✓</div>
+        <div class="exp-opt-info">
+          <div class="exp-opt-title">📅 Jahr ${y}</div>
+          <div class="exp-opt-sub">${yB.length} Belege · ${yBrutto} €</div>
+        </div>
+      </div>`);
+  });
+  if(!years.length){
+    opts.push('<p style="color:var(--mut);font-size:.75rem;text-align:center;padding:20px">Keine Belege mit Datum vorhanden.</p>');
+  }
+  $('expOptions').innerHTML=opts.join('');
+  $('expOverlay').classList.add('on');
+}
+function closeExportModal(){ $('expOverlay').classList.remove('on'); }
+function toggleExpOpt(key){
+  if(expSelection.has(key)) expSelection.delete(key); else expSelection.add(key);
+  const el=document.querySelector(`.exp-opt[data-key="${key}"]`);
+  if(el){ el.classList.toggle('sel', expSelection.has(key)); el.querySelector('.exp-opt-check').textContent=expSelection.has(key)?'✓':''; }
+}
+function runSelectedExport(){
+  if(!expSelection.size){ alert('Bitte mindestens eine Auswertung auswählen.'); return; }
+  const today=new Date().toISOString().slice(0,10);
+  const done=[];
+  if(expSelection.has('all')){
+    const wb=buildWb(allBelege); appendDupSheet(wb);
+    XLSX.writeFile(wb,`Reisekosten_Gesamt_${today}.xlsx`);
+    done.push('Gesamt');
+  }
+  [...expSelection].filter(k=>k!=='all').sort().forEach(y=>{
+    const yB=allBelege.filter(b=>year(b.datum)===Number(y));
+    if(yB.length){ XLSX.writeFile(buildWb(yB),`Reisekosten_${y}.xlsx`); done.push(y); }
+  });
+  closeExportModal();
+  $('expNote').textContent=`Neu erstellt: ${done.join(', ')} · ${new Date().toLocaleTimeString('de-AT')}`;
+  addLog('ok','🔄',`Auswertung neu erstellt: <b>${done.join(', ')}</b>`);
+}
+
+function doExportSilent() {
+  const today=new Date().toISOString().slice(0,10);
+  const base = currentExcel || `Reisekosten_Gesamt_${today}`;
+  // Aktuelle Version
+  const wbGes=buildWb(allBelege);
+  appendDupSheet(wbGes);
+  // Vorversion sichern: vor dem Überschreiben aktuelle als Backup ablegen
+  backupPreviousExcel(base);
+  XLSX.writeFile(wbGes,`${base}_AKTUELL.xlsx`);
+  // Merker für nächste Backup-Runde
+  try{ localStorage.setItem('rk_lastExcel', base); }catch{}
+  // Pro Jahr
+  const years=[...new Set(allBelege.map(b=>year(b.datum)).filter(Boolean))].sort();
+  years.forEach(y=>{
+    const yB=allBelege.filter(b=>year(b.datum)===y);
+    if(yB.length) XLSX.writeFile(buildWb(yB),`Reisekosten_${y}.xlsx`);
+  });
+  return years;
+}
+
+// Vorversion als Backup-Datei erzeugen (mit Zeitstempel im Namen)
+function backupPreviousExcel(base){
+  // Es wird zusätzlich eine Backup-Datei mit Zeitstempel erzeugt = Vorversion
+  const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
+  const wb=buildWb(allBelege);
+  appendDupSheet(wb);
+  XLSX.writeFile(wb,`${base}_BACKUP_${ts}.xlsx`);
+  addLog('info','🗄',`Backup-Vorversion erstellt: ${base}_BACKUP_${ts}.xlsx`);
+}
+function doExport() {
+  const years=doExportSilent();
+  $('expNote').textContent=`Exportiert: Gesamt + ${years.join(', ')} · ${new Date().toLocaleTimeString('de-AT')}`;
+  addLog('ok','📊',`Excel exportiert: Gesamt_${new Date().toISOString().slice(0,10)} + ${years.join(', ')}`);
+}
+
+// ── Neue-Abrechnung-Prompt ──
+function showNewExcelPrompt(){
+  const last=localStorage.getItem('rk_lastExcel')||'';
+  currentExcel=last;
+  $('newExcelInfo').innerHTML = last
+    ? `Aktuelle Abrechnung: <b>${escapeHtml(last)}</b><br>Neue Abrechnung mit eigenem Namen anlegen oder bestehende fortführen?`
+    : 'Möchtest du eine neue Abrechnung mit eigenem Namen anlegen?';
+  $('newExcelName').value='';
+  $('newExcelOverlay').classList.add('on');
+}
+function createNewExcel(){
+  let name=($('newExcelName').value||'').trim();
+  if(!name){ alert('Bitte einen Namen eingeben.'); return; }
+  name=name.replace(/[^a-zA-Z0-9_äöüÄÖÜ\- ]/g,'').replace(/\s+/g,'_');
+  currentExcel=name;
+  try{ localStorage.setItem('rk_lastExcel', name); }catch{}
+  $('newExcelOverlay').classList.remove('on');
+  addLog('ok','📊',`Neue Abrechnung angelegt: <b>${name}</b>`);
+}
+function keepCurrentExcel(){
+  $('newExcelOverlay').classList.remove('on');
+  if(currentExcel) addLog('info','📊',`Abrechnung fortgeführt: <b>${currentExcel}</b>`);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+allBelege=loadBelege();
+duplicates=loadDuplicates();
+loadImages();
+currentExcel=localStorage.getItem('rk_lastExcel')||'';
+addLog('ok','💾',`${allBelege.length} Belege geladen${duplicates.length?' · '+duplicates.length+' Dubletten':''}`);
+renderAll();
+// Beim Start fragen ob neue Abrechnung
+setTimeout(showNewExcelPrompt, 600);
+</script>
+</body>
+</html>
