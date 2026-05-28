@@ -483,11 +483,10 @@ const STORAGE_KEY = 'rk_belege_v4';
 // GOOGLE DRIVE INTEGRATION
 // ───────────────────────────────────────────────────────────────────────────
 // ⚠️ HIER deine OAuth-Client-ID eintragen (aus Google Cloud Console):
-const GOOGLE_CLIENT_ID = ''; // z.B. '1234567890-abc.apps.googleusercontent.com'
+const GOOGLE_CLIENT_ID = '409629736330-1spi2th4h8l5pho7urcvg4map9f0k60s.apps.googleusercontent.com'; // z.B. '1234567890-abc.apps.googleusercontent.com'
 
 // ⚠️ HIER deine Cloudflare-Worker-Adresse eintragen (aus der Anleitung):
-const API_PROXY_URL = 'https://reisekosten-proxy.jtoman100.workers.dev
-'; // z.B. 'https://reisekosten-proxy.DEINNAME.workers.dev'
+const API_PROXY_URL = 'https://reisekosten-proxy.jtoman100.workers.dev'; // z.B. 'https://reisekosten-proxy.DEINNAME.workers.dev'
 // Endpunkt automatisch wählen: Proxy wenn gesetzt, sonst direkter Anthropic-Endpunkt (nur im Claude-Artifact)
 function apiEndpoint(){ return API_PROXY_URL ? API_PROXY_URL : 'https://api.anthropic.com/v1/messages'; }
 // ───────────────────────────────────────────────────────────────────────────
