@@ -483,7 +483,12 @@ const STORAGE_KEY = 'rk_belege_v4';
 // GOOGLE DRIVE INTEGRATION
 // ───────────────────────────────────────────────────────────────────────────
 // ⚠️ HIER deine OAuth-Client-ID eintragen (aus Google Cloud Console):
-const GOOGLE_CLIENT_ID = '409629736330-1spi2th4h8l5pho7urcvg4map9f0k60s.apps.googleusercontent.com'; // z.B. '1234567890-abc.apps.googleusercontent.com'
+const GOOGLE_CLIENT_ID = ''; // z.B. '1234567890-abc.apps.googleusercontent.com'
+
+// ⚠️ HIER deine Cloudflare-Worker-Adresse eintragen (aus der Anleitung):
+const API_PROXY_URL = ''; // z.B. 'https://reisekosten-proxy.DEINNAME.workers.dev'
+// Endpunkt automatisch wählen: Proxy wenn gesetzt, sonst direkter Anthropic-Endpunkt (nur im Claude-Artifact)
+function apiEndpoint(){ return API_PROXY_URL ? API_PROXY_URL : 'https://api.anthropic.com/v1/messages'; }
 // ───────────────────────────────────────────────────────────────────────────
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 let driveToken = null;
@@ -763,7 +768,7 @@ function clearImages() { pendingImages=[]; thumbStatus={}; renderThumbs(); }
 // ─── AI SCAN ──────────────────────────────────────────────────────────────────
 async function scanOne(img) {
   const b64=img.src.split(',')[1];
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
+  const res=await fetch(apiEndpoint(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
       messages:[{role:'user',content:[
@@ -780,7 +785,7 @@ trinkgeld: NUR setzen wenn auf dem Beleg eine Position wie "Trinkgeld", "Service
 }
 
 async function categorizeOne(parsed) {
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
+  const res=await fetch(apiEndpoint(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,
       messages:[{role:'user',content:`Kategorisiere diesen Beleg. Aussteller: "${parsed.aussteller}", Beschreibung: "${parsed.beschreibung}", Nettobetrag: ${parsed.netto} €.
@@ -1020,7 +1025,11 @@ async function startScan() {
       }
     } catch(e) {
       if(ts) ts.className='ts ts-f';
-      addLog('warn','❌',`Fehler: ${e.message}`);
+      if(/failed to fetch|networkerror|load failed/i.test(e.message)){
+        addLog('warn','❌',`KI-Scan nicht erreichbar. ${API_PROXY_URL?'Proxy prüfen.':'<b>API_PROXY_URL noch nicht konfiguriert</b> (siehe Anleitung).'}`);
+      } else {
+        addLog('warn','❌',`Fehler: ${e.message}`);
+      }
     }
   }
 
