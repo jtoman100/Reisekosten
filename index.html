@@ -483,10 +483,10 @@ const STORAGE_KEY = 'rk_belege_v4';
 // GOOGLE DRIVE INTEGRATION
 // ───────────────────────────────────────────────────────────────────────────
 // ⚠️ HIER deine OAuth-Client-ID eintragen (aus Google Cloud Console):
-const GOOGLE_CLIENT_ID = '409629736330-1spi2th4h8l5pho7urcvg4map9f0k60s.apps.googleusercontent.com'; // z.B. '1234567890-abc.apps.googleusercontent.com'
+const GOOGLE_CLIENT_ID = ''; // z.B. '1234567890-abc.apps.googleusercontent.com'
 
 // ⚠️ HIER deine Cloudflare-Worker-Adresse eintragen (aus der Anleitung):
-const API_PROXY_URL = 'https://reisekosten-proxy.jtoman100.workers.dev'; // z.B. 'https://reisekosten-proxy.DEINNAME.workers.dev'
+const API_PROXY_URL = ''; // z.B. 'https://reisekosten-proxy.DEINNAME.workers.dev'
 // Endpunkt automatisch wählen: Proxy wenn gesetzt, sonst direkter Anthropic-Endpunkt (nur im Claude-Artifact)
 function apiEndpoint(){ return API_PROXY_URL ? API_PROXY_URL : 'https://api.anthropic.com/v1/messages'; }
 // ───────────────────────────────────────────────────────────────────────────
@@ -779,8 +779,16 @@ Fehlende Werte=null. uhrzeit nur wenn am Beleg vorhanden (sonst null). betrag=ne
 trinkgeld: NUR setzen wenn auf dem Beleg eine Position wie "Trinkgeld", "Service", "Tip", "Bedienung" oder "Servicepauschale" mit Betrag ausgewiesen ist (dann diesen Betrag als Zahl, sonst null).`}
       ]}]})
   });
-  const d=await res.json();
+  const raw=await res.text();
+  if(!res.ok){
+    throw new Error(`HTTP ${res.status}: ${raw.slice(0,300)}`);
+  }
+  let d;
+  try { d=JSON.parse(raw); }
+  catch(e){ throw new Error(`Antwort kein JSON (Status ${res.status}): ${raw.slice(0,200)}`); }
+  if(d.error){ throw new Error(`API-Fehler: ${d.error.message||JSON.stringify(d.error)}`); }
   const txt=(d.content||[]).map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+  if(!txt){ throw new Error(`Leere Antwort vom Scan. Voll: ${raw.slice(0,200)}`); }
   return JSON.parse(txt);
 }
 
@@ -803,7 +811,12 @@ Sonstiges: alles andere.
 Wichtig: Bei Geräten/Werkzeug/Technik/Möbeln richtet sich GWG vs WG nach dem Nettobetrag (Grenze 1000 €).
 Antworte NUR mit dem exakten Kategorienamen.`}]})
   });
-  const d=await res.json();
+  const raw=await res.text();
+  if(!res.ok){ throw new Error(`HTTP ${res.status}: ${raw.slice(0,200)}`); }
+  let d;
+  try { d=JSON.parse(raw); }
+  catch(e){ throw new Error(`Kategorisierung kein JSON: ${raw.slice(0,200)}`); }
+  if(d.error){ throw new Error(`API-Fehler: ${d.error.message||JSON.stringify(d.error)}`); }
   const kat=(d.content||[]).map(c=>c.text||'').join('').trim();
   return KATEGORIEN.includes(kat)?kat:'Sonstiges';
 }
