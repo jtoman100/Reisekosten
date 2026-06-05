@@ -1,0 +1,70 @@
+push:
+    branches: [ main ]
+    paths:
+      - 'index.html'
+    paths-ignore:
+      - 'config.js'
+      - 'version.json'
+      - '.github/**'
+
+# Berechtigung damit der Workflow zurück ins Repo schreiben darf
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    # Schutz vor Endlosschleife: nicht laufen wenn der letzte Commit von dieser Action selbst war
+    if: "!contains(github.event.head_commit.message, '[skip-bump]')"
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Versionsnummer berechnen (Datum + laufender Index)
+        id: ver
+        run: |
+          DATE=$(date -u +'%Y.%m.%d')
+
+          # Vorhandene Version aus index.html lesen
+          CUR=$(grep -oP "const APP_VERSION = '\K[^']+" index.html || echo "")
+          echo "Aktuell: $CUR"
+
+          # Falls heute schon eine Version: Index hochzählen, sonst .1
+          if [[ "$CUR" == "$DATE."* ]]; then
+            IDX=$(echo "$CUR" | sed "s/^$DATE\.//")
+            NEW="$DATE.$((IDX + 1))"
+          else
+            NEW="$DATE.1"
+          fi
+
+          echo "Neu: $NEW"
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
+      - name: Version in index.html aktualisieren
+        run: |
+          sed -i "s|const APP_VERSION = '[^']*'|const APP_VERSION = '${{ steps.ver.outputs.version }}'|" index.html
+
+      - name: version.json erzeugen
+        run: |
+          cat > version.json << EOF
+          {
+            "version": "${{ steps.ver.outputs.version }}",
+            "released": "$(date -u +'%Y-%m-%d %H:%M UTC')",
+            "notes": "Auto-Update"
+          }
+          EOF
+
+      - name: Änderungen committen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html version.json
+          # Nur committen falls Änderungen vorhanden
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto-Bump auf v${{ steps.ver.outputs.version }} [skip-bump]"
+            git push
+          else
+            echo "Keine Änderungen."
+          fi
