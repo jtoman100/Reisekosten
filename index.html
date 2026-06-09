@@ -10,6 +10,7 @@
 <title>Reisekosten</title>
 <link rel="manifest" href="#" id="manifestLink">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="config.js" onerror="console.warn('config.js fehlt')"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0f0e0c;--sf:#1a1814;--s2:#242018;--bd:#333028;--acc:#e8a040;--ok:#4caf7d;--warn:#e85040;--txt:#f0ead8;--mut:#7a7060}
@@ -25,6 +26,10 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-s
 .drive-btn.connected{background:#4285f4;color:#fff;border-color:#4285f4}
 
 /* Install banner */
+.update-banner{margin:12px;background:rgba(232,160,64,.12);border:1px solid rgba(232,160,64,.4);border-radius:8px;padding:11px 14px;display:flex;align-items:center;gap:10px;font-size:.74rem;color:var(--acc)}
+.update-banner b{color:var(--txt)}
+.update-banner span{flex:1}
+.update-banner button{background:var(--acc);color:#000;border:none;border-radius:5px;padding:7px 14px;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap}
 .install-banner{margin:12px;background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px}
 .install-banner p{font-size:.72rem;color:var(--ok);flex:1;line-height:1.5}
 .install-banner button{background:var(--ok);color:#000;border:none;border-radius:5px;padding:7px 12px;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap}
@@ -136,6 +141,18 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-s
 .rc-img{padding:6px 11px}.rc-img img{width:100%;max-height:110px;object-fit:contain;border:1px solid var(--bd);border-radius:3px;cursor:zoom-in}
 
 /* Lightbox */
+.drive-err-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:900;display:none;align-items:center;justify-content:center;padding:20px;animation:fadeIn .25s ease}
+.drive-err-overlay.on{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.drive-err-box{background:#1a0606;border:3px solid #e85040;border-radius:12px;padding:30px 24px;max-width:500px;width:100%;text-align:center;box-shadow:0 0 40px rgba(232,80,64,.5),0 0 80px rgba(232,80,64,.3);animation:errShake .5s ease}
+@keyframes errShake{0%{transform:scale(.85)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.drive-err-icon{font-size:3.5rem;margin-bottom:14px;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(1.1)}}
+.drive-err-title{font-size:1.7rem;font-weight:900;color:#ff4040;letter-spacing:.05em;line-height:1.2;margin-bottom:14px;text-shadow:0 0 12px rgba(255,64,64,.6);text-transform:uppercase}
+.drive-err-sub{font-size:.9rem;color:#ffaaaa;margin-bottom:22px;font-weight:600;line-height:1.4}
+.drive-err-btn{display:block;width:100%;background:#4285f4;color:#fff;border:none;border-radius:6px;padding:13px 18px;font-size:.9rem;font-weight:700;cursor:pointer;margin-bottom:10px}
+.drive-err-btn:active{background:#3068d4}
+.drive-err-close{display:block;width:100%;background:transparent;color:#ffaaaa;border:1.5px solid #ff4040;border-radius:6px;padding:10px 18px;font-size:.78rem;font-weight:600;cursor:pointer}
 .lb{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:500;display:none;align-items:center;justify-content:center;padding:14px}
 .lb.on{display:flex}
 .lb img{max-width:100%;max-height:92vh;object-fit:contain;border-radius:5px}
@@ -245,9 +262,15 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-s
   <!-- Header -->
   <div class="hdr">
     <h1>⚡ Reisekosten Agent</h1>
-    <div class="hdr-sub">Persistent · KFZ separat · Auto-Excel · ☁️ Drive</div>
+    <div class="hdr-sub">Persistent · KFZ separat · Auto-Excel · ☁️ Drive · v<span id="verLabel"></span></div>
     <div class="hdr-stat" id="hdrStat">Lade Belege…</div>
     <button class="drive-btn" id="driveBtn" onclick="driveLogin()">☁️ Mit Google Drive verbinden</button>
+  </div>
+
+  <!-- Update-Banner -->
+  <div class="update-banner hidden" id="updateBanner">
+    <span>🔄 Neue Version verfügbar (<b id="newVersion">–</b>)</span>
+    <button onclick="doUpdate()">Jetzt aktualisieren</button>
   </div>
 
   <!-- Install Banner (shown when installable) -->
@@ -264,12 +287,15 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-s
       <div class="drop-icon">📎</div>
       <h3>Neue Belege hinzufügen</h3>
       <p>Foto aufnehmen oder Bild wählen</p>
-      <label class="drop-btn">📷 Foto aufnehmen
-        <input type="file" accept="image/*" capture="environment" style="display:none" onchange="handleFileInput(event)">
+      <label class="drop-btn" id="camBtn">📷 Foto aufnehmen
+        <input type="file" accept="image/*" capture="environment" id="camInput" style="display:none" onchange="handleFileInput(event)">
       </label>
       <label class="cam-btn">🖼 Aus Galerie wählen
         <input type="file" accept="image/*" multiple style="display:none" onchange="handleFileInput(event)">
       </label>
+      <p id="ffHint" style="display:none;font-size:.62rem;color:var(--warn);margin-top:8px">
+        💡 Firefox-Hinweis: Wenn der Dateimanager statt der Kamera öffnet, nutze stattdessen den Chrome-Browser oder die installierte App.
+      </p>
     </div>
     <div class="thumbs" id="thumbs"></div>
     <div class="scan-bar" id="scanBar" style="display:none">
@@ -415,6 +441,9 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-s
       <label class="man-lbl">Beschreibung</label>
       <input type="text" id="manBeschreibung" class="man-in" placeholder="optional">
 
+      <label class="man-lbl">Land</label>
+      <select id="manLand" class="man-in"></select>
+
       <label class="man-lbl">Kategorie</label>
       <select id="manKategorie" class="man-in">
         <option>Verpflegung</option>
@@ -470,6 +499,17 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-s
   </div>
 </div>
 
+<!-- Drive-Fehler-Overlay (groß, rot, fett) -->
+<div class="drive-err-overlay" id="driveErrOverlay" onclick="closeDriveErr()">
+  <div class="drive-err-box">
+    <div class="drive-err-icon">⚠️</div>
+    <div class="drive-err-title">GOOGLE DRIVE<br>NICHT VERBUNDEN</div>
+    <div class="drive-err-sub" id="driveErrSub">Beleg kann nicht hochgeladen werden.</div>
+    <button class="drive-err-btn" onclick="event.stopPropagation();closeDriveErr();driveLogin()">☁️ Jetzt verbinden</button>
+    <button class="drive-err-close" onclick="closeDriveErr()">Schließen</button>
+  </div>
+</div>
+
 <!-- Lightbox -->
 <div class="lb" id="lb" onclick="this.classList.remove('on')">
   <img id="lbImg" src="" alt="">
@@ -480,14 +520,20 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-s
 const STORAGE_KEY = 'rk_belege_v4';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// GOOGLE DRIVE INTEGRATION
+// APP-VERSION & AUTO-UPDATE
 // ───────────────────────────────────────────────────────────────────────────
-// ⚠️ HIER deine OAuth-Client-ID eintragen (aus Google Cloud Console):
-const GOOGLE_CLIENT_ID = '409629736330-1spi2th4h8l5pho7urcvg4map9f0k60s.apps.googleusercontent.com'; // z.B. '1234567890-abc.apps.googleusercontent.com'
+const APP_VERSION = '2026.05.28.4';   // bei jedem Code-Update erhöhen
+// URL zur version.json auf GitHub (wird beim Start geprüft)
+const VERSION_URL = 'https://jtoman100.github.io/Reisekosten/version.json';
+// ═══════════════════════════════════════════════════════════════════════════
 
-// ⚠️ HIER deine Cloudflare-Worker-Adresse eintragen (aus der Anleitung):
-const API_PROXY_URL = 'https://reisekosten-proxy.jtoman100.workers.dev'; // z.B. 'https://reisekosten-proxy.DEINNAME.workers.dev'
-// Endpunkt automatisch wählen: Proxy wenn gesetzt, sonst direkter Anthropic-Endpunkt (nur im Claude-Artifact)
+// ═══════════════════════════════════════════════════════════════════════════
+// KONFIGURATION
+// ───────────────────────────────────────────────────────────────────────────
+// Werte werden aus config.js geladen (separate Datei, wird nie überschrieben).
+// Fallback: leerer String falls config.js fehlt.
+const GOOGLE_CLIENT_ID = (window.RK_CONFIG && window.RK_CONFIG.GOOGLE_CLIENT_ID) || '';
+const API_PROXY_URL    = (window.RK_CONFIG && window.RK_CONFIG.API_PROXY_URL)    || '';
 function apiEndpoint(){ return API_PROXY_URL ? API_PROXY_URL : 'https://api.anthropic.com/v1/messages'; }
 // ───────────────────────────────────────────────────────────────────────────
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -505,6 +551,18 @@ function loadGoogleAuth(){
     s.onload=()=>resolve(); s.onerror=()=>resolve();
     document.head.appendChild(s);
   });
+}
+
+function showDriveError(action){
+  const sub=$('driveErrSub');
+  if(sub) sub.textContent = action || 'Beleg kann nicht hochgeladen werden.';
+  $('driveErrOverlay').classList.add('on');
+  addLog('warn','🚨','<b style="color:#ff4040">GOOGLE DRIVE NICHT VERBUNDEN</b> — '+(action||'Upload nicht möglich'));
+}
+function closeDriveErr(){ $('driveErrOverlay').classList.remove('on'); }
+function requireDriveOrError(action){
+  if(!driveReady()){ showDriveError(action); return false; }
+  return true;
 }
 
 async function driveLogin(){
@@ -582,11 +640,11 @@ const KAT_META = {
   'Sonstiges':{'icon':'📎','color':'#aaaaaa'},
 };
 const SEED = [
-  {id:1001,datum:'2026-05-08',uhrzeit:'10:20',aussteller:'Eni Service-Station, Brunn am Gebirge',beschreibung:'Diesel 52,27 L × 1,949 €/L',netto:84.89,brutto:101.87,waehrung:'EUR',steuern:[{satz:20,betrag:16.98}],kategorie:'KFZ Treibstoff / Reinigung',flag:null,image:null},
-  {id:1002,datum:'2026-05-16',uhrzeit:'17:56',aussteller:'BILLA AG, Tulln',beschreibung:'Lebensmittel (Süßwaren, Getränke)',netto:46.20,brutto:53.67,waehrung:'EUR',steuern:[{satz:10,betrag:1.77},{satz:20,betrag:5.70}],kategorie:'Verpflegung',flag:null,image:null},
-  {id:1003,datum:'2026-05-17',uhrzeit:'11:43',aussteller:'Anton Starkl GmbH, Tulln',beschreibung:'Gartenbedarf (Erde, Dünger, Pflanzen)',netto:59.63,brutto:68.69,waehrung:'EUR',steuern:[{satz:10,betrag:0.91},{satz:13,betrag:3.65},{satz:20,betrag:4.50}],kategorie:'Sonstiges',flag:null,image:null},
-  {id:1004,datum:'2026-05-22',uhrzeit:'17:00',aussteller:'BILLA AG, Wien Schottengasse',beschreibung:'Lebensmittel + Pfand',netto:3.49,brutto:4.03,waehrung:'EUR',steuern:[{satz:10,betrag:0.11},{satz:20,betrag:0.43}],kategorie:'Verpflegung',flag:null,image:null},
-  {id:1005,datum:'2026-05-22',uhrzeit:'13:07',aussteller:'Radatz, Wien Schottengasse 3a',beschreibung:'Fleischwaren & Gebäck',netto:9.01,brutto:9.91,waehrung:'EUR',steuern:[{satz:10,betrag:0.90}],kategorie:'Verpflegung',flag:null,image:null},
+  {id:1001,land:'AT',datum:'2026-05-08',uhrzeit:'10:20',aussteller:'Eni Service-Station, Brunn am Gebirge',beschreibung:'Diesel 52,27 L × 1,949 €/L',netto:84.89,brutto:101.87,waehrung:'EUR',steuern:[{satz:20,betrag:16.98}],kategorie:'KFZ Treibstoff / Reinigung',flag:null,image:null},
+  {id:1002,land:'AT',datum:'2026-05-16',uhrzeit:'17:56',aussteller:'BILLA AG, Tulln',beschreibung:'Lebensmittel (Süßwaren, Getränke)',netto:46.20,brutto:53.67,waehrung:'EUR',steuern:[{satz:10,betrag:1.77},{satz:20,betrag:5.70}],kategorie:'Verpflegung',flag:null,image:null},
+  {id:1003,land:'AT',datum:'2026-05-17',uhrzeit:'11:43',aussteller:'Anton Starkl GmbH, Tulln',beschreibung:'Gartenbedarf (Erde, Dünger, Pflanzen)',netto:59.63,brutto:68.69,waehrung:'EUR',steuern:[{satz:10,betrag:0.91},{satz:13,betrag:3.65},{satz:20,betrag:4.50}],kategorie:'Sonstiges',flag:null,image:null},
+  {id:1004,land:'AT',datum:'2026-05-22',uhrzeit:'17:00',aussteller:'BILLA AG, Wien Schottengasse',beschreibung:'Lebensmittel + Pfand',netto:3.49,brutto:4.03,waehrung:'EUR',steuern:[{satz:10,betrag:0.11},{satz:20,betrag:0.43}],kategorie:'Verpflegung',flag:null,image:null},
+  {id:1005,land:'AT',datum:'2026-05-22',uhrzeit:'13:07',aussteller:'Radatz, Wien Schottengasse 3a',beschreibung:'Fleischwaren & Gebäck',netto:9.01,brutto:9.91,waehrung:'EUR',steuern:[{satz:10,betrag:0.90}],kategorie:'Verpflegung',flag:null,image:null},
 ];
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -770,13 +828,14 @@ async function scanOne(img) {
   const b64=img.src.split(',')[1];
   const res=await fetch(apiEndpoint(),{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,
       messages:[{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:img.mime,data:b64}},
         {type:'text',text:`Lies diesen Beleg. Gib NUR dieses JSON zurück:
-{"datum":"YYYY-MM-DD","uhrzeit":"HH:MM","aussteller":"Name","netto":0.00,"brutto":0.00,"steuern":[{"satz":20,"betrag":0.00}],"beschreibung":"kurz","waehrung":"EUR","trinkgeld":null}
+{"datum":"YYYY-MM-DD","uhrzeit":"HH:MM","aussteller":"Name","netto":0.00,"brutto":0.00,"steuern":[{"satz":20,"betrag":0.00}],"beschreibung":"kurz","waehrung":"EUR","trinkgeld":null,"land":"AT"}
 Fehlende Werte=null. uhrzeit nur wenn am Beleg vorhanden (sonst null). betrag=netto*satz/100.
-trinkgeld: NUR setzen wenn auf dem Beleg eine Position wie "Trinkgeld", "Service", "Tip", "Bedienung" oder "Servicepauschale" mit Betrag ausgewiesen ist (dann diesen Betrag als Zahl, sonst null).`}
+trinkgeld: NUR setzen wenn auf dem Beleg eine Position wie "Trinkgeld", "Service", "Tip", "Bedienung" oder "Servicepauschale" mit Betrag ausgewiesen ist (dann diesen Betrag als Zahl, sonst null).
+land: ISO-Ländercode (AT, DE, IT, CH, FR, SI, HU, CZ, SK, HR usw.). Erkenne aus Adresse, PLZ, Sprache, UID-Format (ATU=Österreich, DE=Deutschland, IT=Italien usw.). Wenn unklar oder keine Anhaltspunkte: "AT" als Vorgabe.`}
       ]}]})
   });
   const raw=await res.text();
@@ -795,7 +854,7 @@ trinkgeld: NUR setzen wenn auf dem Beleg eine Position wie "Trinkgeld", "Service
 async function categorizeOne(parsed) {
   const res=await fetch(apiEndpoint(),{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:200,
       messages:[{role:'user',content:`Kategorisiere diesen Beleg. Aussteller: "${parsed.aussteller}", Beschreibung: "${parsed.beschreibung}", Nettobetrag: ${parsed.netto} €.
 Wähle EINE Kategorie: ${KATEGORIEN.join(', ')}.
 KFZ Parken: Parkschein/Parkhaus/Kurzparkzone.
@@ -821,6 +880,31 @@ Antworte NUR mit dem exakten Kategorienamen.`}]})
   return KATEGORIEN.includes(kat)?kat:'Sonstiges';
 }
 
+// ── Länder-Liste mit Vorgabe Österreich ──
+const LAENDER = [
+  {code:'AT', name:'Österreich', flag:'🇦🇹'},
+  {code:'DE', name:'Deutschland', flag:'🇩🇪'},
+  {code:'IT', name:'Italien', flag:'🇮🇹'},
+  {code:'CH', name:'Schweiz', flag:'🇨🇭'},
+  {code:'FR', name:'Frankreich', flag:'🇫🇷'},
+  {code:'SI', name:'Slowenien', flag:'🇸🇮'},
+  {code:'HU', name:'Ungarn', flag:'🇭🇺'},
+  {code:'CZ', name:'Tschechien', flag:'🇨🇿'},
+  {code:'SK', name:'Slowakei', flag:'🇸🇰'},
+  {code:'HR', name:'Kroatien', flag:'🇭🇷'},
+  {code:'PL', name:'Polen', flag:'🇵🇱'},
+  {code:'NL', name:'Niederlande', flag:'🇳🇱'},
+  {code:'BE', name:'Belgien', flag:'🇧🇪'},
+  {code:'ES', name:'Spanien', flag:'🇪🇸'},
+  {code:'GB', name:'Großbritannien', flag:'🇬🇧'},
+  {code:'US', name:'USA', flag:'🇺🇸'},
+  {code:'XX', name:'Anderes Land', flag:'🌍'},
+];
+function landMeta(code){
+  return LAENDER.find(l=>l.code===(code||'AT').toUpperCase()) || LAENDER[0];
+}
+function landName(code){ const m=landMeta(code); return m.flag+' '+m.name; }
+
 // ── Manuelle Belegerfassung ──
 const TYP_DEFAULTS = {
   'Taggeld':                {kat:'Verpflegung', satz:'0', beschr:'Taggeld (Diäten)'},
@@ -841,6 +925,10 @@ function openManual(){
   $('manUhrzeit').value='';
   $('manBrutto').value='';
   $('manBeschreibung').value='';
+  // Länder-Dropdown füllen
+  const ld=$('manLand');
+  ld.innerHTML=LAENDER.map(l=>`<option value="${l.code}">${l.flag} ${l.name}</option>`).join('');
+  ld.value='AT';   // Vorgabe Österreich
   onManTyp();
   $('manOverlay').classList.add('on');
 }
@@ -869,6 +957,8 @@ function saveManual(){
   const brutto=r(parseFloat(($('manBrutto').value||'').replace(',','.'))||0);
   if(!datum){ alert('Bitte Datum angeben.'); return; }
   if(brutto<=0){ alert('Bitte Bruttobetrag angeben.'); return; }
+  // Drive-Verbindung erforderlich
+  if(!requireDriveOrError('Manueller Beleg kann nicht hochgeladen werden')){ closeManual(); return; }
   const satz=parseFloat($('manSatz').value)||0;
   let netto, steuerBetrag, steuern;
   if(satz>0){
@@ -891,6 +981,7 @@ function saveManual(){
     aussteller: $('manAussteller').value||$('manTyp').value,
     beschreibung: $('manBeschreibung').value||$('manTyp').value,
     netto, brutto, waehrung:'EUR',
+    land: $('manLand').value||'AT',
     steuern,
     kategorie: manKat,
     flag:null, image:null,
@@ -965,6 +1056,8 @@ function addTrinkgeldPosition(beleg, betrag){
 
 async function startScan() {
   if(!pendingImages.length) return;
+  // Drive-Verbindung erforderlich für Upload
+  if(!requireDriveOrError('Beleg kann nicht gescannt und hochgeladen werden')) return;
   $('scanBtn').disabled=true;
   $('parsingBox').classList.add('on');
   $('scanBar').style.display='none';
@@ -996,7 +1089,7 @@ async function startScan() {
       const ok=Math.abs(calc-parseFloat(parsed.brutto||0))<0.02;
       addLog(ok?'ok':'warn',ok?'✓':'⚠',ok?`Prüfung OK`:`Abweichung: ${r(Math.abs(calc-parsed.brutto)).toFixed(2)} €`);
 
-      let candidate={...parsed,id:uid(),image:img.src,kategorie:kat,flag:null,waehrung:parsed.waehrung||'EUR',erfasst:new Date().toISOString(),
+      let candidate={...parsed,id:uid(),image:img.src,kategorie:kat,flag:null,waehrung:parsed.waehrung||'EUR',land:(parsed.land||'AT').toUpperCase(),erfasst:new Date().toISOString(),
         excelDatei: currentExcel||('Reisekosten_'+(new Date(parsed.datum||Date.now()).getFullYear())),
         origSize: img.origSize||null, bildSize: img.newSize||null, cloudStatus:'lokal'};
       if(img.origSize && img.newSize){
@@ -1109,6 +1202,7 @@ function belegSearchText(b){
     fmt(b.brutto), fmt(b.netto),
     String(b.brutto||''), String(b.netto||''),
     b.manuell?'manuell':'',
+    b.land||'', landMeta(b.land).name,
     (b.steuern||[]).map(t=>`${t.satz}% ${t.position||''} ${fmt(t.betrag)} ${fmt(t.netto||0)}`).join(' '),
   ];
   return parts.join(' ').toLowerCase();
@@ -1257,7 +1351,7 @@ function renderAll() {
       <div class="rc-hd" style="cursor:pointer" onclick="openDetail(${b.id})">
         <div>
           <div class="rc-n">${highlight(b.aussteller||'Unbekannt', searchQuery)}</div>
-          <div class="rc-d">${highlight(fmtD(b.datum)+(b.uhrzeit?' · '+b.uhrzeit+' Uhr':'')+(b.beschreibung?' · '+b.beschreibung:''), searchQuery)}</div>
+          <div class="rc-d">${landMeta(b.land).flag} ${highlight(fmtD(b.datum)+(b.uhrzeit?' · '+b.uhrzeit+' Uhr':'')+(b.beschreibung?' · '+b.beschreibung:''), searchQuery)}</div>
         </div>
         <div class="rc-bdgs">
           <span class="bdg ${ok?'b-ok':'b-w'}">${ok?'✓ OK':'⚠'}</span>
@@ -1308,7 +1402,7 @@ function renderDuplicates() {
       <div class="rc-hd">
         <div>
           <div class="rc-n">${b.aussteller||'Unbekannt'}</div>
-          <div class="rc-d">${fmtD(b.datum)}${b.uhrzeit?' · '+b.uhrzeit+' Uhr':''}${b.beschreibung?' · '+b.beschreibung:''}</div>
+          <div class="rc-d">${landMeta(b.land).flag} ${fmtD(b.datum)}${b.uhrzeit?' · '+b.uhrzeit+' Uhr':''}${b.beschreibung?' · '+b.beschreibung:''}</div>
           <div class="dup-link">↳ Dublette zu bereits erfasstem Beleg</div>
         </div>
         <div class="rc-bdgs">
@@ -1386,6 +1480,7 @@ function openDetail(id){
         <div class="det-field"><span class="dl">Aussteller</span><span class="dv">${escapeHtml(b.aussteller||'–')}</span></div>
         <div class="det-field"><span class="dl">Datum</span><span class="dv">${fmtD(b.datum)}</span></div>
         <div class="det-field"><span class="dl">Uhrzeit</span><span class="dv">${b.uhrzeit||'–'}</span></div>
+        <div class="det-field"><span class="dl">Land</span><span class="dv">${landName(b.land)}</span></div>
         <div class="det-field"><span class="dl">Kategorie</span><span class="dv">${m.icon} ${b.kategorie||'–'}</span></div>
         <div class="det-field"><span class="dl">Beschreibung</span><span class="dv">${escapeHtml(b.beschreibung||'–')}</span></div>
         <div class="det-field"><span class="dl">Erfassung</span><span class="dv">${b.manuell?'Manuell':'KI-Scan'}</span></div>
@@ -1436,16 +1531,16 @@ function buildWb(belege) {
   const totS=r(totB-totN);
 
   // Sheet 1
-  const rows1=[['Nr','Datum','Uhrzeit','Aussteller','Beschreibung','Kategorie','MwSt%','Netto €','Steuer €','Brutto €','Prüfung']];
+  const rows1=[['Nr','Datum','Uhrzeit','Land','Aussteller','Beschreibung','Kategorie','MwSt%','Netto €','Steuer €','Brutto €','Prüfung']];
   sorted.forEach((b,i)=>{
     const txB=r((b.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
     const ok=Math.abs(r(parseFloat(b.netto||0)+txB)-parseFloat(b.brutto||0))<0.02;
-    rows1.push([i+1,fmtD(b.datum),b.uhrzeit||'',b.aussteller,(b.beschreibung||'')+(b.manuell?' [manuell]':''),b.kategorie||'',
+    rows1.push([i+1,fmtD(b.datum),b.uhrzeit||'',b.land||'AT',b.aussteller,(b.beschreibung||'')+(b.manuell?' [manuell]':''),b.kategorie||'',
       (b.steuern||[]).map(t=>t.satz+'%').join('+'),parseFloat(b.netto||0),txB,parseFloat(b.brutto||0),ok?'✓ OK':'⚠']);
   });
-  rows1.push([],['','','','','','','GESAMT',totN,totS,totB,belege.length+' Belege']);
+  rows1.push([],['','','','','','','','GESAMT',totN,totS,totB,belege.length+' Belege']);
   const ws1=XLSX.utils.aoa_to_sheet(rows1);
-  ws1['!cols']=[{wch:5},{wch:12},{wch:9},{wch:28},{wch:28},{wch:26},{wch:10},{wch:12},{wch:12},{wch:12},{wch:14}];
+  ws1['!cols']=[{wch:5},{wch:12},{wch:9},{wch:6},{wch:28},{wch:28},{wch:26},{wch:10},{wch:12},{wch:12},{wch:12},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws1,'Alle Belege');
 
   // Sheet 2: Kategorien + KFZ
@@ -1514,13 +1609,13 @@ function buildWb(belege) {
   XLSX.utils.book_append_sheet(wb,ws3,'Steueraufschlüsselung');
 
   // Sheet 4: Übersicht + Prüfung
-  const rows4=[['Nr','Datum','Uhrzeit','Aussteller','Kategorie','Netto €','Steuer €','Brutto €','Prüfung']];
+  const rows4=[['Nr','Datum','Uhrzeit','Land','Aussteller','Kategorie','Netto €','Steuer €','Brutto €','Prüfung']];
   sorted.forEach((b,i)=>{
     const txB=r((b.steuern||[]).reduce((s,t)=>s+parseFloat(t.betrag||0),0));
     const ok=Math.abs(r(parseFloat(b.netto||0)+txB)-parseFloat(b.brutto||0))<0.02;
-    rows4.push([i+1,fmtD(b.datum),b.uhrzeit||'',b.aussteller,b.kategorie||'',parseFloat(b.netto||0),txB,parseFloat(b.brutto||0),ok?'✓ OK':'⚠']);
+    rows4.push([i+1,fmtD(b.datum),b.uhrzeit||'',b.land||'AT',b.aussteller,b.kategorie||'',parseFloat(b.netto||0),txB,parseFloat(b.brutto||0),ok?'✓ OK':'⚠']);
   });
-  rows4.push([],['','','','GESAMT',totN,totS,totB]);
+  rows4.push([],['','','','','GESAMT',totN,totS,totB]);
   rows4.push([],[' BELEGPRÜFUNG — Netto + Steuer = Brutto']);
   rows4.push(['','Aussteller','Netto','Steuer','Brutto ber.','Beleg Brutto','Differenz','Status']);
   sorted.forEach(b=>{
@@ -1530,7 +1625,7 @@ function buildWb(belege) {
     rows4.push(['',b.aussteller.split(',')[0],parseFloat(b.netto||0),txB,berech,parseFloat(b.brutto||0),Math.abs(diff)<0.02?0:diff,Math.abs(diff)<0.02?'✓ OK':'⚠ Abweichung']);
   });
   const ws4=XLSX.utils.aoa_to_sheet(rows4);
-  ws4['!cols']=[{wch:5},{wch:13},{wch:9},{wch:28},{wch:26},{wch:12},{wch:12},{wch:12},{wch:16}];
+  ws4['!cols']=[{wch:5},{wch:13},{wch:9},{wch:6},{wch:28},{wch:26},{wch:12},{wch:12},{wch:12},{wch:16}];
   XLSX.utils.book_append_sheet(wb,ws4,'Übersicht & Prüfung');
   return wb;
 }
@@ -1670,13 +1765,73 @@ function keepCurrentExcel(){
   if(currentExcel) addLog('info','📊',`Abrechnung fortgeführt: <b>${currentExcel}</b>`);
 }
 
+// ── Versionsprüfung & Auto-Update ──
+async function checkForUpdate(){
+  try {
+    const res = await fetch(VERSION_URL + '?t=' + Date.now(), {cache:'no-store'});
+    if(!res.ok) return;
+    const data = await res.json();
+    if(data.version && data.version !== APP_VERSION){
+      $('newVersion').textContent = data.version;
+      $('updateBanner').classList.remove('hidden');
+      addLog('info','🔄',`Neue Version <b>${data.version}</b> verfügbar — Auto-Update in 5 Sek…`);
+      // AUTO-UPDATE: nach 5 Sekunden automatisch aktualisieren
+      let cd = 5;
+      const cdEl = document.createElement('span');
+      cdEl.id = 'updCountdown'; cdEl.style.fontWeight='700';
+      $('updateBanner').querySelector('span').appendChild(cdEl);
+      const updateTimer = setInterval(()=>{
+        cd--;
+        if(cdEl) cdEl.textContent = ' ('+cd+' Sek)';
+        if(cd<=0){ clearInterval(updateTimer); doUpdate(); }
+      },1000);
+      // Auto-Update kann durch Klick gestoppt werden — Button macht es sofort
+      $('updateBanner').querySelector('button').textContent='Jetzt';
+    } else {
+      addLog('info','✓',`App aktuell (v${APP_VERSION})`);
+    }
+  } catch(e){}
+}
+// Periodischer Check alle 5 Minuten (falls App offen bleibt)
+setInterval(()=>checkForUpdate(), 5*60*1000);
+async function doUpdate(){
+  addLog('acc','🔄','Aktualisiere App…');
+  try {
+    // 1) Service Worker und alle Caches löschen
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for(const r of regs) await r.unregister();
+    }
+    if('caches' in window){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch(e){}
+  // 2) Hartes Reload mit Cache-Buster
+  setTimeout(()=>{ location.href = location.pathname + '?v=' + Date.now(); }, 200);
+}
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 allBelege=loadBelege();
 duplicates=loadDuplicates();
 loadImages();
 currentExcel=localStorage.getItem('rk_lastExcel')||'';
+$('verLabel').textContent = APP_VERSION;
+// Firefox-Hinweis bei Kamera-Bedienung
+if(/Firefox/i.test(navigator.userAgent)){
+  const h=$('ffHint'); if(h) h.style.display='';
+  addLog('info','💡','Firefox erkannt — bei Kamera-Problemen Chrome verwenden');
+}
 addLog('ok','💾',`${allBelege.length} Belege geladen${duplicates.length?' · '+duplicates.length+' Dubletten':''}`);
+if(!window.RK_CONFIG){
+  addLog('warn','⚙','<b>config.js nicht gefunden</b> — bitte einmalig konfigurieren (siehe Anleitung)');
+} else {
+  if(!GOOGLE_CLIENT_ID) addLog('warn','⚙','Google Client-ID in config.js leer');
+  if(!API_PROXY_URL) addLog('warn','⚙','API_PROXY_URL in config.js leer');
+}
 renderAll();
+// Versionsprüfung im Hintergrund
+checkForUpdate();
 // Beim Start fragen ob neue Abrechnung
 setTimeout(showNewExcelPrompt, 600);
 </script>
