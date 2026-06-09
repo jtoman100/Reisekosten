@@ -532,7 +532,7 @@ const VERSION_URL = 'https://jtoman100.github.io/Reisekosten/version.json';
 // ───────────────────────────────────────────────────────────────────────────
 // Werte werden aus config.js geladen (separate Datei, wird nie überschrieben).
 // Fallback: leerer String falls config.js fehlt.
-const GOOGLE_CLIENT_ID = (window.RK_CONFIG && window.RK_CONFIG.GOOGLE_CLIENT_ID) || '';
+const GOOGLE_CLIENT_ID = const GOOGLE_CLIENT_ID = '1234567890-abc.apps.googleusercontent.com';
 const API_PROXY_URL    = (window.RK_CONFIG && window.RK_CONFIG.API_PROXY_URL)    || '';
 function apiEndpoint(){ return API_PROXY_URL ? API_PROXY_URL : 'https://api.anthropic.com/v1/messages'; }
 // ───────────────────────────────────────────────────────────────────────────
